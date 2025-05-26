@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: bachelor_postgres
+    environment:
+      POSTGRES_DB: bachelor_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - bachelor_network
+
+  # Go Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bachelor_backend
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres123
+      - DB_NAME=bachelor_db
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - ML_SERVICE_URL=http://ml_service:8000
+      - PORT=8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - bachelor_network
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
+
+  # Python ML Service
+  ml_service:
+    build:
+      context: ./ml_service
+      dockerfile: Dockerfile
+    container_name: bachelor_ml_service
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres123
+      - DB_NAME=bachelor_db
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+    networks:
+      - bachelor_network
+    volumes:
+      - ./ml_service:/app
+    restart: unless-stopped
+
+  # React Frontend with Nginx
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: bachelor_frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - bachelor_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  bachelor_network:
+    driver: bridge 
