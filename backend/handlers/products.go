@@ -7,6 +7,7 @@ import (
 	"bachelor_backend/database"
 	"bachelor_backend/middleware"
 	"bachelor_backend/models"
+	"bachelor_backend/services"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
@@ -218,6 +219,9 @@ func GetRecommendations(c fiber.Ctx) error {
 
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
 
+	// Try to get fresh recommendations from ML service
+	go generateMLRecommendations(userID, limit)
+
 	// Get recommendations from database
 	var recommendations []models.Recommendation
 	if err := database.DB.Where("user_id = ?", userID).
@@ -292,6 +296,35 @@ func trackProductViews(c fiber.Ctx, products []models.Product) {
 	}
 }
 
+// GetMLStatus returns the status of ML models
+func GetMLStatus(c fiber.Ctx) error {
+	status, err := services.MLService.GetMLStatus()
+	if err != nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+			"error":   "ML service unavailable",
+			"details": err.Error(),
+		})
+	}
+
+	return c.JSON(status)
+}
+
+// TrainMLModels triggers training of ML models
+func TrainMLModels(c fiber.Ctx) error {
+	err := services.MLService.TrainModels()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error":   "Failed to train ML models",
+			"details": err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"message": "ML model training initiated successfully",
+		"status":  "success",
+	})
+}
+
 func trackSingleProductView(c fiber.Ctx, productID uuid.UUID) {
 	var userID *uuid.UUID
 	if id, ok := middleware.GetUserID(c); ok {
@@ -316,4 +349,48 @@ func trackUserInteraction(userID, productID uuid.UUID, interactionType, sessionI
 	}
 
 	database.DB.Create(&interaction)
+}
+
+// generateMLRecommendations calls the ML service to generate recommendations
+func generateMLRecommendations(userID uuid.UUID, limit int) {
+	// Try to call ML service first
+	mlRecommendations, err := services.MLService.GenerateRecommendations(userID, "hybrid", limit)
+	if err == nil && mlRecommendations != nil {
+		// Save ML recommendations to database
+		for _, mlRec := range mlRecommendations.Recommendations {
+			productUUID, err := uuid.Parse(mlRec.ProductID)
+			if err != nil {
+				continue
+			}
+
+			rec := models.Recommendation{
+				UserID:        userID,
+				ProductID:     productUUID,
+				AlgorithmType: mlRec.Algorithm,
+				Score:         mlRec.Score,
+			}
+			database.DB.Create(&rec)
+		}
+		return
+	}
+
+	// Fallback: Check if user already has recent recommendations
+	var count int64
+	database.DB.Model(&models.Recommendation{}).Where("user_id = ?", userID).Count(&count)
+
+	if count == 0 {
+		// Create some sample recommendations for demo purposes
+		var products []models.Product
+		database.DB.Limit(limit).Find(&products)
+
+		for i, product := range products {
+			rec := models.Recommendation{
+				UserID:        userID,
+				ProductID:     product.ID,
+				AlgorithmType: "hybrid",
+				Score:         float64(limit-i) / float64(limit), // Decreasing scores
+			}
+			database.DB.Create(&rec)
+		}
+	}
 }

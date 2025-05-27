@@ -1,6 +1,13 @@
-import { Outlet } from 'react-router'
+import { Outlet, Link } from 'react-router'
+import { useAuthStore } from '../store/auth'
 
 export default function Root() {
+  const { isAuthenticated, user, logout } = useAuthStore()
+
+  const handleLogout = () => {
+    logout()
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navigation Header */}
@@ -8,20 +15,47 @@ export default function Root() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900">
-                ML E-Commerce
-              </h1>
+              <Link to="/" className="text-xl font-bold text-gray-900 hover:text-blue-600">
+                🤖 ML E-Commerce
+              </Link>
             </div>
-            <nav className="flex space-x-8">
-              <a href="/" className="text-gray-700 hover:text-gray-900">
+            <nav className="flex items-center space-x-8">
+              <Link to="/" className="text-gray-700 hover:text-gray-900">
                 Home
-              </a>
-              <a href="/products" className="text-gray-700 hover:text-gray-900">
+              </Link>
+              <Link to="/products" className="text-gray-700 hover:text-gray-900">
                 Products
-              </a>
-              <a href="/auth/login" className="text-gray-700 hover:text-gray-900">
-                Login
-              </a>
+              </Link>
+              {isAuthenticated ? (
+                <>
+                  <Link to="/admin" className="text-gray-700 hover:text-gray-900">
+                    Admin
+                  </Link>
+                  <div className="flex items-center space-x-4">
+                    <span className="text-sm text-gray-600">
+                      Welcome, {user?.name}
+                    </span>
+                    <button
+                      onClick={handleLogout}
+                      className="text-gray-700 hover:text-gray-900"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center space-x-4">
+                  <Link to="/auth/login" className="text-gray-700 hover:text-gray-900">
+                    Login
+                  </Link>
+                  <Link 
+                    to="/auth/register" 
+                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                  >
+                    Sign Up
+                  </Link>
+                </div>
+              )}
             </nav>
           </div>
         </div>

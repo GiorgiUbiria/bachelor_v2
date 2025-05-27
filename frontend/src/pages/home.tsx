@@ -1,3 +1,5 @@
+import { Link } from 'react-router'
+
 export default function Home() {
   return (
     <div className="space-y-12">
@@ -13,12 +15,18 @@ export default function Home() {
               smart search, and personalized experiences.
             </p>
             <div className="space-x-4">
-              <button className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
+              <Link 
+                to="/products"
+                className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors inline-block"
+              >
                 Shop Now
-              </button>
-              <button className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors">
-                Learn More
-              </button>
+              </Link>
+              <Link 
+                to="/admin"
+                className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors inline-block"
+              >
+                Admin Panel
+              </Link>
             </div>
           </div>
         </div>
@@ -88,9 +96,12 @@ export default function Home() {
             <p className="text-lg text-gray-600 mb-8">
               Join thousands of users discovering products through intelligent recommendations
             </p>
-            <button className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
+            <Link 
+              to="/auth/register"
+              className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors inline-block"
+            >
               Get Started
-            </button>
+            </Link>
           </div>
         </div>
       </section>

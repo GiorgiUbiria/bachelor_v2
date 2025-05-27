@@ -10,7 +10,7 @@ import (
 // User represents a user in the system
 type User struct {
 	ID           uuid.UUID `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
-	Email        string    `json:"email" gorm:"uniqueIndex;not null"`
+	Email        string    `json:"email" gorm:"unique;not null"`
 	Name         string    `json:"name" gorm:"not null"`
 	PasswordHash string    `json:"-" gorm:"not null"`
 	CreatedAt    time.Time `json:"created_at"`

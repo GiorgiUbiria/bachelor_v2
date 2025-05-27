@@ -30,7 +30,7 @@ type AuthStore = AuthState & AuthActions
 
 export const useAuthStore = create<AuthStore>()(
   persist(
-    immer((set, get) => ({
+    immer((set) => ({
       // Initial state
       user: null,
       token: null,

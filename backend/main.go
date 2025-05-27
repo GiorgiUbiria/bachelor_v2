@@ -80,8 +80,10 @@ func main() {
 		return c.JSON(fiber.Map{"message": "Order endpoints coming soon"})
 	})
 
-	// ML routes (to be implemented)
+	// ML routes
 	ml := api.Group("/ml")
+	ml.Get("/status", handlers.GetMLStatus)
+	ml.Post("/train", middleware.AuthRequired(), handlers.TrainMLModels)
 	ml.Get("/trends", func(c fiber.Ctx) error {
 		return c.JSON(fiber.Map{"message": "ML trends endpoint coming soon"})
 	})

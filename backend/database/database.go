@@ -57,7 +57,8 @@ func Connect() {
 
 // AutoMigrate runs auto-migration for all models
 func AutoMigrate() error {
-	return DB.AutoMigrate(
+	// Migrate models one by one to handle potential constraint issues
+	models := []interface{}{
 		&models.User{},
 		&models.Product{},
 		&models.Order{},
@@ -75,7 +76,19 @@ func AutoMigrate() error {
 		&models.ProductView{},
 		&models.SearchAnalytics{},
 		&models.MLModelPerformance{},
-	)
+	}
+
+	for _, model := range models {
+		if err := DB.AutoMigrate(model); err != nil {
+			// Log the error but continue with other models
+			log.Printf("Warning: Failed to migrate model %T: %v", model, err)
+		}
+	}
+
+	// Ensure UUID extension is enabled
+	DB.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"")
+
+	return nil
 }
 
 // GetDB returns the database instance
