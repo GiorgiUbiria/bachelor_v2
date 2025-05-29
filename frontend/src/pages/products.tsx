@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router'
 import { useAuthStore } from '../store/auth'
+import { useCartStore } from '../store/cart'
 import { apiService } from '../services/api'
 import LoadingSpinner from '../components/LoadingSpinner'
 
@@ -39,6 +40,7 @@ interface ProductResponse {
 
 export default function Products() {
   const { isAuthenticated } = useAuthStore()
+  const { addItem } = useCartStore()
   const [products, setProducts] = useState<Product[]>([])
   const [recommendations, setRecommendations] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
@@ -47,6 +49,8 @@ export default function Products() {
   const [categories, setCategories] = useState<string[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [addingToCart, setAddingToCart] = useState<string | null>(null)
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
   useEffect(() => {
     fetchProducts()
@@ -55,6 +59,15 @@ export default function Products() {
       fetchRecommendations()
     }
   }, [currentPage, selectedCategory, isAuthenticated])
+
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => {
+        setMessage(null)
+      }, 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [message])
 
   const fetchProducts = async () => {
     try {
@@ -116,6 +129,23 @@ export default function Products() {
     setCurrentPage(1)
   }
 
+  const handleAddToCart = async (productId: string) => {
+    if (!isAuthenticated) {
+      setMessage({ type: 'error', text: 'Please log in to add items to cart' })
+      return
+    }
+
+    try {
+      setAddingToCart(productId)
+      await addItem(productId, 1)
+      setMessage({ type: 'success', text: 'Item added to cart successfully!' })
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to add item to cart' })
+    } finally {
+      setAddingToCart(null)
+    }
+  }
+
   const isRecommended = (productId: string) => {
     return recommendations.includes(productId)
   }
@@ -125,6 +155,17 @@ export default function Products() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-4">Products</h1>
+        
+        {/* Message */}
+        {message && (
+          <div className={`mb-4 p-3 rounded-md ${
+            message.type === 'success' 
+              ? 'bg-green-50 border border-green-200 text-green-700' 
+              : 'bg-red-50 border border-red-200 text-red-700'
+          }`}>
+            {message.text}
+          </div>
+        )}
         
         {/* Search and Filters */}
         <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -211,7 +252,7 @@ export default function Products() {
                   <p className="text-gray-600 text-sm mb-3 line-clamp-2">
                     {product.description}
                   </p>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-3">
                     <span className="text-2xl font-bold text-blue-600">
                       ${product.price.toFixed(2)}
                     </span>
@@ -219,7 +260,34 @@ export default function Products() {
                       {product.category}
                     </span>
                   </div>
-                  <div className="mt-3">
+                  
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm text-gray-600">
+                      Stock: {product.stock}
+                    </span>
+                    {product.stock === 0 && (
+                      <span className="text-red-500 text-sm font-medium">Out of Stock</span>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => handleAddToCart(product.id)}
+                      disabled={addingToCart === product.id || product.stock === 0}
+                      className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                    >
+                      {addingToCart === product.id ? (
+                        <>
+                          <LoadingSpinner size="sm" className="mr-2" />
+                          Adding...
+                        </>
+                      ) : product.stock === 0 ? (
+                        'Out of Stock'
+                      ) : (
+                        '🛒 Add to Cart'
+                      )}
+                    </button>
+                    
                     <Link
                       to={`/products/${product.id}`}
                       className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors text-center block"

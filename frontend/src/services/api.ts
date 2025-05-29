@@ -1,139 +1,155 @@
 import axios from 'axios'
-import type { AxiosInstance, AxiosResponse } from 'axios'
 
-// Create axios instance with base configuration
-const api: AxiosInstance = axios.create({
-  baseURL: 'http://localhost:8080/api/v1',
-  timeout: 10000,
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+const ML_API_BASE_URL = import.meta.env.VITE_ML_API_URL || 'http://localhost:8000'
+
+// Create axios instances
+const api = axios.create({
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 })
 
-// Request interceptor to add auth token
-api.interceptors.request.use(
-  (config) => {
-    // Get token from localStorage (Zustand persist storage)
-    const authStorage = localStorage.getItem('auth-storage')
-    if (authStorage) {
-      try {
-        const { state } = JSON.parse(authStorage)
-        if (state?.token) {
-          config.headers.Authorization = `Bearer ${state.token}`
-        }
-      } catch (error) {
-        console.error('Error parsing auth storage:', error)
+const mlApi = axios.create({
+  baseURL: ML_API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+})
+
+// Add auth token to requests
+api.interceptors.request.use((config) => {
+  const authStorage = localStorage.getItem('auth-storage')
+  if (authStorage) {
+    try {
+      const { state } = JSON.parse(authStorage)
+      if (state?.token) {
+        config.headers.Authorization = `Bearer ${state.token}`
       }
+    } catch (error) {
+      console.error('Error parsing auth storage:', error)
     }
-    return config
-  },
-  (error) => {
-    return Promise.reject(error)
   }
-)
+  return config
+})
 
-// Response interceptor for error handling
-api.interceptors.response.use(
-  (response: AxiosResponse) => {
-    return response
-  },
-  (error) => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid - clear auth state
-      localStorage.removeItem('auth-storage')
-      window.location.href = '/auth/login'
+mlApi.interceptors.request.use((config) => {
+  const authStorage = localStorage.getItem('auth-storage')
+  if (authStorage) {
+    try {
+      const { state } = JSON.parse(authStorage)
+      if (state?.token) {
+        config.headers.Authorization = `Bearer ${state.token}`
+      }
+    } catch (error) {
+      console.error('Error parsing auth storage:', error)
     }
-    return Promise.reject(error)
   }
-)
+  return config
+})
 
-// API service functions
 export const apiService = {
   // Auth endpoints
   auth: {
-    login: (email: string, password: string) =>
-      api.post('/auth/login', { email, password }),
-    register: (email: string, name: string, password: string) =>
-      api.post('/auth/register', { email, name, password }),
-    getProfile: () => api.get('/auth/profile'),
-    updateProfile: (data: { name: string }) =>
-      api.put('/auth/profile', data),
+    login: (credentials: { email: string; password: string }) =>
+      api.post('/api/v1/auth/login', credentials),
+    register: (userData: { name: string; email: string; password: string }) =>
+      api.post('/api/v1/auth/register', userData),
+    logout: () => api.post('/api/v1/auth/logout'),
+    me: () => api.get('/api/v1/auth/me'),
   },
 
   // Product endpoints
   products: {
-    getAll: (params?: {
-      page?: number
-      limit?: number
-      category?: string
-      search?: string
-      sort?: string
-      order?: string
-    }) => api.get('/products', { params }),
-    getById: (id: string) => api.get(`/products/${id}`),
-    getByCategory: (category: string, params?: { page?: number; limit?: number }) =>
-      api.get(`/products/category/${category}`, { params }),
-    search: (query: string, params?: { page?: number; limit?: number }) =>
-      api.get('/products/search', { params: { q: query, ...params } }),
-    getCategories: () => api.get('/products/categories'),
+    getAll: (params?: { page?: number; limit?: number; category?: string; search?: string }) =>
+      api.get('/api/v1/products', { params }),
+    getById: (id: string) => api.get(`/api/v1/products/${id}`),
+    create: (productData: any) => api.post('/api/v1/products', productData),
+    update: (id: string, productData: any) => api.put(`/api/v1/products/${id}`, productData),
+    delete: (id: string) => api.delete(`/api/v1/products/${id}`),
+    getCategories: () => api.get('/api/v1/products/categories'),
     getRecommendations: (params?: { limit?: number }) =>
-      api.get('/products/recommendations', { params }),
+      api.get('/api/v1/products/recommendations', { params }),
   },
 
-  // ML endpoints
-  ml: {
-    recommendations: {
-      generate: (userId: string, algorithm?: string, limit?: number) =>
-        api.post('/ml/recommendations/generate', { user_id: userId, algorithm, limit }),
-      getUser: (userId: string, algorithm?: string, limit?: number) =>
-        api.get(`/ml/recommendations/user/${userId}`, { params: { algorithm, limit } }),
-      feedback: (userId: string, productId: string, feedbackType: string) =>
-        api.post('/ml/recommendations/feedback', { user_id: userId, product_id: productId, feedback_type: feedbackType }),
-      popular: (limit?: number) =>
-        api.get('/ml/recommendations/popular', { params: { limit } }),
-      similar: (productId: string, limit?: number) =>
-        api.get(`/ml/recommendations/similar/${productId}`, { params: { limit } }),
-    },
-    search: {
-      enhanced: (query: string, limit?: number) =>
-        api.post('/ml/search/enhanced', { query, limit }),
-      suggestions: (query: string) =>
-        api.get('/ml/search/suggestions', { params: { query } }),
-    },
-    trends: {
-      sales: (period?: string, category?: string) =>
-        api.get('/ml/trends/sales', { params: { period, category } }),
-      forecast: (days?: number, category?: string) =>
-        api.get('/ml/trends/forecast', { params: { days, category } }),
-      popular: (period?: string, limit?: number) =>
-        api.get('/ml/trends/popular', { params: { period, limit } }),
-    },
-    chatbot: {
-      message: (message: string, sessionId?: string, userId?: string) =>
-        api.post('/ml/chatbot/message', { message, session_id: sessionId, user_id: userId }),
-      intents: () => api.get('/ml/chatbot/intents'),
-    },
-  },
-
-  // Cart endpoints (when implemented)
+  // Cart endpoints
   cart: {
-    get: () => api.get('/cart'),
-    add: (productId: string, quantity: number) =>
-      api.post('/cart/items', { product_id: productId, quantity }),
-    update: (itemId: string, quantity: number) =>
-      api.put(`/cart/items/${itemId}`, { quantity }),
-    remove: (itemId: string) => api.delete(`/cart/items/${itemId}`),
-    clear: () => api.delete('/cart'),
+    get: () => api.get('/api/v1/cart'),
+    addItem: (productId: string, quantity: number) =>
+      api.post('/api/v1/cart/items', { product_id: productId, quantity }),
+    updateItem: (itemId: string, quantity: number) =>
+      api.put(`/api/v1/cart/items/${itemId}`, { quantity }),
+    removeItem: (itemId: string) => api.delete(`/api/v1/cart/items/${itemId}`),
+    clear: () => api.delete('/api/v1/cart'),
   },
 
-  // Order endpoints (when implemented)
+  // Order endpoints
   orders: {
-    getAll: () => api.get('/orders'),
-    getById: (id: string) => api.get(`/orders/${id}`),
-    create: (cartId: string) => api.post('/orders', { cart_id: cartId }),
+    getAll: (params?: { page?: number; limit?: number; status?: string }) =>
+      api.get('/api/v1/orders', { params }),
+    getById: (id: string) => api.get(`/api/v1/orders/${id}`),
+    create: (orderData?: { shipping_address?: string; notes?: string }) =>
+      api.post('/api/v1/orders', orderData || {}),
     updateStatus: (id: string, status: string) =>
-      api.put(`/orders/${id}/status`, { status }),
+      api.put(`/api/v1/orders/${id}/status`, { status }),
+    cancel: (id: string) => api.put(`/api/v1/orders/${id}/cancel`),
+  },
+
+  // Analytics endpoints
+  analytics: {
+    dashboard: () => api.get('/api/v1/analytics/dashboard'),
+    users: (params?: { period?: string }) => api.get('/api/v1/analytics/users', { params }),
+    products: (params?: { period?: string }) => api.get('/api/v1/analytics/products', { params }),
+    export: (params?: { format?: string; period?: string }) =>
+      api.get('/api/v1/analytics/export', { params }),
+  },
+
+  // ML Service endpoints
+  ml: {
+    // Search endpoints
+    search: {
+      search: (query: string, params?: { 
+        category?: string; 
+        min_price?: number; 
+        max_price?: number; 
+        sort_by?: string; 
+        limit?: number 
+      }) =>
+        mlApi.post('/search', { query, ...params }),
+      suggestions: (query: string) =>
+        mlApi.get('/search/suggestions', { params: { query } }),
+      analytics: () => mlApi.get('/search/analytics'),
+      reindex: () => mlApi.post('/search/reindex'),
+      status: () => mlApi.get('/search/status'),
+    },
+
+    // Trends endpoints
+    trends: {
+      products: (params?: { period?: string; limit?: number }) =>
+        mlApi.get('/trends/products', { params }),
+      categories: (params?: { period?: string }) =>
+        mlApi.get('/trends/categories', { params }),
+      forecast: (productId: string, params?: { days?: number }) =>
+        mlApi.get(`/trends/forecast/${productId}`, { params }),
+      dashboard: () => mlApi.get('/trends/dashboard'),
+      insights: () => mlApi.get('/trends/insights'),
+    },
+
+    // Recommendations endpoints
+    recommendations: {
+      user: (userId: string, params?: { limit?: number; algorithm?: string }) =>
+        mlApi.get(`/recommendations/user/${userId}`, { params }),
+      product: (productId: string, params?: { limit?: number }) =>
+        mlApi.get(`/recommendations/product/${productId}`, { params }),
+      retrain: () => mlApi.post('/recommendations/retrain'),
+      status: () => mlApi.get('/recommendations/status'),
+    },
+
+    // General ML endpoints
+    health: () => mlApi.get('/health'),
+    models: () => mlApi.get('/models/status'),
   },
 }
 
-export default api 
+export default apiService 

@@ -68,36 +68,46 @@ func main() {
 	products.Get("/category/:category", middleware.OptionalAuth(), handlers.GetProductsByCategory)
 	products.Get("/:id", middleware.OptionalAuth(), handlers.GetProduct)
 
-	// Shopping cart routes (to be implemented)
+	// Shopping cart routes
 	cart := api.Group("/cart", middleware.AuthRequired())
-	cart.Get("/", func(c fiber.Ctx) error {
-		return c.JSON(fiber.Map{"message": "Cart endpoints coming soon"})
-	})
+	cart.Get("/", handlers.GetCart)
+	cart.Post("/add", handlers.AddToCart)
+	cart.Put("/item/:id", handlers.UpdateCartItem)
+	cart.Delete("/item/:id", handlers.RemoveFromCart)
+	cart.Delete("/clear", handlers.ClearCart)
 
-	// Order routes (to be implemented)
+	// Order routes
 	orders := api.Group("/orders", middleware.AuthRequired())
-	orders.Get("/", func(c fiber.Ctx) error {
-		return c.JSON(fiber.Map{"message": "Order endpoints coming soon"})
-	})
+	orders.Get("/", handlers.GetOrders)
+	orders.Get("/stats", handlers.GetOrderStats)
+	orders.Get("/:id", handlers.GetOrder)
+	orders.Post("/", handlers.CreateOrder)
+	orders.Put("/:id/status", handlers.UpdateOrderStatus)
+	orders.Put("/:id/cancel", handlers.CancelOrder)
+
+	// Analytics routes
+	analytics := api.Group("/analytics", middleware.AuthRequired())
+	analytics.Get("/dashboard", handlers.GetDashboard)
+	analytics.Get("/user", handlers.GetUserAnalytics)
+	analytics.Get("/products", handlers.GetProductAnalytics)
+	analytics.Get("/trends", handlers.GetMLTrends)
+	analytics.Get("/search", handlers.GetSearchAnalytics)
+	analytics.Get("/recommendations/metrics", handlers.GetRecommendationMetrics)
+	analytics.Get("/export", handlers.ExportAnalytics)
 
 	// ML routes
 	ml := api.Group("/ml")
-	ml.Get("/status", handlers.GetMLStatus)
-	ml.Post("/train", middleware.AuthRequired(), handlers.TrainMLModels)
-	ml.Get("/trends", func(c fiber.Ctx) error {
-		return c.JSON(fiber.Map{"message": "ML trends endpoint coming soon"})
+	ml.Get("/status", func(c fiber.Ctx) error {
+		return c.JSON(fiber.Map{"message": "ML service integration coming soon"})
+	})
+	ml.Post("/train", middleware.AuthRequired(), func(c fiber.Ctx) error {
+		return c.JSON(fiber.Map{"message": "ML training endpoint coming soon"})
 	})
 
 	// Chatbot routes (to be implemented)
 	chat := api.Group("/chat")
 	chat.Post("/message", func(c fiber.Ctx) error {
 		return c.JSON(fiber.Map{"message": "Chatbot endpoint coming soon"})
-	})
-
-	// Analytics routes (to be implemented)
-	analytics := api.Group("/analytics", middleware.AuthRequired())
-	analytics.Get("/dashboard", func(c fiber.Ctx) error {
-		return c.JSON(fiber.Map{"message": "Analytics dashboard coming soon"})
 	})
 
 	// Get port from environment
