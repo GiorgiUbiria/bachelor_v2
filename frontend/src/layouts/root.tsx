@@ -1,110 +1,254 @@
-import { Outlet, Link } from 'react-router'
+import { Outlet, Link, useNavigate, useLocation } from 'react-router'
 import { useState, useEffect } from 'react'
+import { ShoppingBag, LogOut, Menu } from 'lucide-react'
 import { useAuthStore } from '../store/auth'
 import { useCartStore } from '../store/cart'
-import ShoppingCart from '../components/ShoppingCart'
+import { useUIStore } from '../store/ui'
+import { ThemeToggle } from '../components/theme-toggle'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 
-export default function Root() {
-  const { isAuthenticated, user, logout } = useAuthStore()
+export default function RootLayout() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { user, isAuthenticated, logout } = useAuthStore()
   const { cart, fetchCart } = useCartStore()
-  const [isCartOpen, setIsCartOpen] = useState(false)
+  const { addToast } = useUIStore()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     if (isAuthenticated) {
       fetchCart()
+      
+      if (location.pathname === '/login' || location.pathname === '/register') {
+        navigate('/')
+      }
     }
-  }, [isAuthenticated, fetchCart])
+  }, [isAuthenticated, fetchCart, location.pathname, navigate])
 
-  const handleLogout = () => {
-    logout()
-    setIsCartOpen(false)
+  const handleLogout = async () => {
+    try {
+      await logout()
+      addToast({
+        type: 'success',
+        description: 'Logged out successfully'
+      })
+      navigate('/')
+    } catch (error) {
+      addToast({
+        type: 'error',
+        description: 'Failed to logout'
+      })
+    }
+    setMobileMenuOpen(false)
   }
 
   const cartItemCount = cart?.total_items || 0
 
+  const navigationItems = [
+    { name: 'Home', href: '/', icon: '🏠' },
+    { name: 'Products', href: '/products', icon: '📦' },
+  ]
+
+  const authenticatedItems = [
+    { name: 'Admin', href: '/admin', icon: '⚙️' },
+  ]
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Navigation Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Link to="/" className="text-xl font-bold text-gray-900 hover:text-blue-600">
-                🤖 ML E-Commerce
-              </Link>
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-16 items-center justify-between">
+          <Link to="/" className="flex items-center space-x-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              🤖
             </div>
-            <nav className="flex items-center space-x-8">
-              <Link to="/" className="text-gray-700 hover:text-gray-900">
-                Home
+            <span className="hidden font-bold sm:inline-block">
+              ML E-Commerce
+            </span>
+          </Link>
+
+          <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
+            {navigationItems.map((item) => (
+              <Link
+                key={item.name}
+                to={item.href}
+                className="transition-colors hover:text-foreground/80 text-foreground/60"
+              >
+                <span className="mr-2">{item.icon}</span>
+                {item.name}
               </Link>
-              <Link to="/products" className="text-gray-700 hover:text-gray-900">
-                Products
+            ))}
+            {isAuthenticated && authenticatedItems.map((item) => (
+              <Link
+                key={item.name}
+                to={item.href}
+                className="transition-colors hover:text-foreground/80 text-foreground/60"
+              >
+                <span className="mr-2">{item.icon}</span>
+                {item.name}
               </Link>
-              {isAuthenticated ? (
-                <>
-                  <Link to="/admin" className="text-gray-700 hover:text-gray-900">
-                    Admin
-                  </Link>
-                  
-                  {/* Cart Icon */}
-                  <button
-                    onClick={() => setIsCartOpen(true)}
-                    className="relative text-gray-700 hover:text-gray-900 p-2"
+            ))}
+          </nav>
+
+          <div className="flex items-center space-x-2">
+            <ThemeToggle />
+            {isAuthenticated && (
+              <Button
+                variant="outline"
+                size="icon"
+                className="relative"
+              >
+                <ShoppingBag className="h-4 w-4" />
+                {cartItemCount > 0 && (
+                  <Badge
+                    variant="destructive"
+                    className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 text-xs"
                   >
-                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 6M7 13l-1.5 6m0 0h9m-9 0h9" />
-                    </svg>
-                    {cartItemCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                        {cartItemCount > 99 ? '99+' : cartItemCount}
-                      </span>
-                    )}
-                  </button>
-                  
-                  <div className="flex items-center space-x-4">
-                    <span className="text-sm text-gray-600">
-                      Welcome, {user?.name}
-                    </span>
-                    <button
-                      onClick={handleLogout}
-                      className="text-gray-700 hover:text-gray-900"
-                    >
-                      Logout
-                    </button>
+                    {cartItemCount > 99 ? '99+' : cartItemCount}
+                  </Badge>
+                )}
+              </Button>
+            )}
+
+            {isAuthenticated ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback>
+                        {user?.name?.charAt(0).toUpperCase() || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <div className="flex items-center justify-start gap-2 p-2">
+                    <div className="flex flex-col space-y-1 leading-none">
+                      <p className="font-medium">{user?.name}</p>
+                      <p className="w-[200px] truncate text-sm text-muted-foreground">
+                        {user?.email}
+                      </p>
+                    </div>
                   </div>
-                </>
-              ) : (
-                <div className="flex items-center space-x-4">
-                  <Link to="/auth/login" className="text-gray-700 hover:text-gray-900">
-                    Login
-                  </Link>
-                  <Link 
-                    to="/auth/register" 
-                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <div className="hidden md:flex items-center space-x-2">
+                <Button variant="ghost" asChild>
+                  <Link to="/auth/login">Login</Link>
+                </Button>
+                <Button asChild>
+                  <Link to="/auth/register">Sign Up</Link>
+                </Button>
+              </div>
+            )}
+
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="md:hidden"
+                  size="icon"
+                >
+                  <Menu className="h-5 w-5" />
+                  <span className="sr-only">Toggle Menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="pr-0">
+                <div className="px-6">
+                  <Link
+                    to="/"
+                    className="flex items-center space-x-2"
+                    onClick={() => setMobileMenuOpen(false)}
                   >
-                    Sign Up
+                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm">
+                      🤖
+                    </div>
+                    <span className="font-bold">ML E-Commerce</span>
                   </Link>
+                  <div className="my-4 h-[calc(100vh-8rem)] pb-10 pl-6">
+                    <div className="flex flex-col space-y-3">
+                      {navigationItems.map((item) => (
+                        <Link
+                          key={item.name}
+                          to={item.href}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <span className="mr-2">{item.icon}</span>
+                          {item.name}
+                        </Link>
+                      ))}
+                      {isAuthenticated && authenticatedItems.map((item) => (
+                        <Link
+                          key={item.name}
+                          to={item.href}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <span className="mr-2">{item.icon}</span>
+                          {item.name}
+                        </Link>
+                      ))}
+                      {!isAuthenticated && (
+                        <>
+                          <Link
+                            to="/auth/login"
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="text-muted-foreground hover:text-foreground"
+                          >
+                            Login
+                          </Link>
+                          <Link
+                            to="/auth/register"
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="text-muted-foreground hover:text-foreground"
+                          >
+                            Sign Up
+                          </Link>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              )}
-            </nav>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </header>
 
-      {/* Shopping Cart Sidebar */}
-      <ShoppingCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
 
-      {/* Main Content */}
-      <main>
+      <main className="flex-1">
         <Outlet />
       </main>
 
-      {/* Footer */}
-      <footer className="bg-gray-800 text-white mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center">
-            <p>&copy; 2024 ML E-Commerce Platform. Built for Bachelor's Project.</p>
+      <footer className="border-t bg-background">
+        <div className="container flex flex-col items-center justify-between gap-4 py-10 md:h-24 md:flex-row md:py-0">
+          <div className="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
+            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm">
+              🤖
+            </div>
+            <p className="text-center text-sm leading-loose text-muted-foreground md:text-left">
+              Built for Bachelor's Project. Demonstrating ML in E-commerce.
+            </p>
           </div>
+          <p className="text-center text-sm text-muted-foreground md:text-left">
+            © 2024 ML E-Commerce Platform. All rights reserved.
+          </p>
         </div>
       </footer>
     </div>

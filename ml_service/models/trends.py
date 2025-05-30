@@ -9,7 +9,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 from datetime import datetime, timedelta
 import json
 
-from database.connection import get_db_connection
+from database.connection import get_db_connection, release_db_connection
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,8 @@ class TrendAnalyzer:
 
     async def _load_historical_data(self):
         """Load historical sales and interaction data"""
-        async with get_db_connection() as conn:
+        conn = await get_db_connection()
+        try:
             # Load sales data
             sales_query = """
             SELECT 
@@ -97,6 +98,8 @@ class TrendAnalyzer:
             logger.info(f"Loaded {len(self.sales_data)} sales records, "
                        f"{len(self.interaction_data)} interaction records, "
                        f"{len(self.search_data)} search records")
+        finally:
+            await release_db_connection(conn)
 
     async def _analyze_trends(self):
         """Analyze trends in the data"""

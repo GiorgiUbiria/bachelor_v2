@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
+import { apiService } from '../services/api'
 
 export interface User {
   id: string
@@ -24,13 +25,14 @@ interface AuthActions {
   logout: () => void
   clearError: () => void
   setLoading: (loading: boolean) => void
+  checkAuth: () => Promise<void>
 }
 
 type AuthStore = AuthState & AuthActions
 
 export const useAuthStore = create<AuthStore>()(
   persist(
-    immer((set) => ({
+    immer((set, get) => ({
       // Initial state
       user: null,
       token: null,
@@ -46,20 +48,8 @@ export const useAuthStore = create<AuthStore>()(
         })
 
         try {
-          const response = await fetch('http://localhost:8080/api/v1/auth/login', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email, password }),
-          })
-
-          if (!response.ok) {
-            const errorData = await response.json()
-            throw new Error(errorData.error || 'Login failed')
-          }
-
-          const data = await response.json()
+          const response = await apiService.auth.login({ email, password })
+          const data = response.data
 
           set((state) => {
             state.user = data.user
@@ -68,12 +58,13 @@ export const useAuthStore = create<AuthStore>()(
             state.isLoading = false
             state.error = null
           })
-        } catch (error) {
+        } catch (error: any) {
+          const errorMessage = error.response?.data?.error || error.message || 'Login failed'
           set((state) => {
-            state.error = error instanceof Error ? error.message : 'Login failed'
+            state.error = errorMessage
             state.isLoading = false
           })
-          throw error
+          throw new Error(errorMessage)
         }
       },
 
@@ -84,20 +75,8 @@ export const useAuthStore = create<AuthStore>()(
         })
 
         try {
-          const response = await fetch('http://localhost:8080/api/v1/auth/register', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email, name, password }),
-          })
-
-          if (!response.ok) {
-            const errorData = await response.json()
-            throw new Error(errorData.error || 'Registration failed')
-          }
-
-          const data = await response.json()
+          const response = await apiService.auth.register({ email, name, password })
+          const data = response.data
 
           set((state) => {
             state.user = data.user
@@ -106,22 +85,61 @@ export const useAuthStore = create<AuthStore>()(
             state.isLoading = false
             state.error = null
           })
-        } catch (error) {
+        } catch (error: any) {
+          const errorMessage = error.response?.data?.error || error.message || 'Registration failed'
           set((state) => {
-            state.error = error instanceof Error ? error.message : 'Registration failed'
+            state.error = errorMessage
             state.isLoading = false
           })
-          throw error
+          throw new Error(errorMessage)
         }
       },
 
-      logout: () => {
-        set((state) => {
-          state.user = null
-          state.token = null
-          state.isAuthenticated = false
-          state.error = null
-        })
+      logout: async () => {
+        try {
+          // Call logout endpoint if authenticated
+          if (get().isAuthenticated) {
+            await apiService.auth.logout()
+          }
+        } catch (error) {
+          // Ignore logout errors, still clear local state
+          console.warn('Logout request failed:', error)
+        } finally {
+          set((state) => {
+            state.user = null
+            state.token = null
+            state.isAuthenticated = false
+            state.error = null
+          })
+        }
+      },
+
+      checkAuth: async () => {
+        const { token } = get()
+        if (!token) return
+
+        try {
+          set((state) => {
+            state.isLoading = true
+          })
+
+          const response = await apiService.auth.me()
+          const user = response.data
+
+          set((state) => {
+            state.user = user
+            state.isAuthenticated = true
+            state.isLoading = false
+          })
+        } catch (error) {
+          // Token is invalid, clear auth state
+          set((state) => {
+            state.user = null
+            state.token = null
+            state.isAuthenticated = false
+            state.isLoading = false
+          })
+        }
       },
 
       clearError: () => {

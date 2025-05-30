@@ -1,0 +1,1493 @@
+basePath: /api/v1
+definitions:
+  handlers.AddToCartRequest:
+    properties:
+      product_id:
+        example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+      quantity:
+        example: 2
+        maximum: 100
+        minimum: 1
+        type: integer
+    required:
+    - product_id
+    - quantity
+    type: object
+  handlers.AuthResponse:
+    properties:
+      token:
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
+      user:
+        $ref: '#/definitions/models.User'
+    type: object
+  handlers.CreateOrderRequest:
+    properties:
+      payment_method:
+        enum:
+        - credit_card
+        - debit_card
+        - paypal
+        - bank_transfer
+        example: credit_card
+        type: string
+      shipping_address:
+        example: 123 Main St, City, State 12345
+        maxLength: 500
+        minLength: 10
+        type: string
+    required:
+    - payment_method
+    - shipping_address
+    type: object
+  handlers.CreateProductRequest:
+    properties:
+      category:
+        example: Electronics
+        maxLength: 100
+        minLength: 1
+        type: string
+      description:
+        example: Latest iPhone with A17 Pro chip
+        maxLength: 1000
+        minLength: 1
+        type: string
+      image_url:
+        example: https://example.com/image.jpg
+        type: string
+      name:
+        example: iPhone 15 Pro
+        maxLength: 255
+        minLength: 1
+        type: string
+      price:
+        example: 999.99
+        minimum: 0.01
+        type: number
+      stock:
+        example: 50
+        minimum: 0
+        type: integer
+    required:
+    - category
+    - description
+    - name
+    - price
+    - stock
+    type: object
+  handlers.LoginRequest:
+    properties:
+      email:
+        example: user@example.com
+        maxLength: 255
+        type: string
+      password:
+        example: password123
+        maxLength: 128
+        minLength: 1
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  handlers.RegisterRequest:
+    properties:
+      email:
+        example: user@example.com
+        maxLength: 255
+        type: string
+      name:
+        example: John Doe
+        maxLength: 100
+        minLength: 2
+        type: string
+      password:
+        example: password123
+        maxLength: 128
+        minLength: 8
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
+  handlers.StandardErrorResponse:
+    properties:
+      error:
+        example: Invalid email or password
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  handlers.UpdateCartItemRequest:
+    properties:
+      quantity:
+        example: 3
+        maximum: 100
+        minimum: 0
+        type: integer
+    required:
+    - quantity
+    type: object
+  handlers.UpdateOrderStatusRequest:
+    properties:
+      status:
+        enum:
+        - pending
+        - processing
+        - shipped
+        - delivered
+        - cancelled
+        example: processing
+        type: string
+    required:
+    - status
+    type: object
+  handlers.UpdateProductRequest:
+    properties:
+      category:
+        example: Electronics
+        maxLength: 100
+        minLength: 1
+        type: string
+      description:
+        example: Latest iPhone with A17 Pro chip
+        maxLength: 1000
+        minLength: 1
+        type: string
+      image_url:
+        example: https://example.com/image.jpg
+        type: string
+      name:
+        example: iPhone 15 Pro
+        maxLength: 255
+        minLength: 1
+        type: string
+      price:
+        example: 999.99
+        minimum: 0.01
+        type: number
+      stock:
+        example: 50
+        minimum: 0
+        type: integer
+    type: object
+  handlers.UpdateProfileRequest:
+    properties:
+      name:
+        example: John Doe
+        maxLength: 100
+        minLength: 2
+        type: string
+      phone:
+        example: "+1234567890"
+        maxLength: 20
+        type: string
+    type: object
+  models.CartItem:
+    properties:
+      cart:
+        allOf:
+        - $ref: '#/definitions/models.ShoppingCart'
+        description: Relationships
+      cart_id:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      product:
+        $ref: '#/definitions/models.Product'
+      product_id:
+        type: string
+      quantity:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  models.Order:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      order_items:
+        items:
+          $ref: '#/definitions/models.OrderItem'
+        type: array
+      status:
+        type: string
+      total:
+        type: number
+      updated_at:
+        type: string
+      user:
+        allOf:
+        - $ref: '#/definitions/models.User'
+        description: Relationships
+      user_id:
+        type: string
+    type: object
+  models.OrderItem:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      order:
+        allOf:
+        - $ref: '#/definitions/models.Order'
+        description: Relationships
+      order_id:
+        type: string
+      price:
+        type: number
+      product:
+        $ref: '#/definitions/models.Product'
+      product_id:
+        type: string
+      quantity:
+        type: integer
+    type: object
+  models.Product:
+    properties:
+      cart_items:
+        items:
+          $ref: '#/definitions/models.CartItem'
+        type: array
+      category:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      image_url:
+        type: string
+      name:
+        type: string
+      order_items:
+        description: Relationships
+        items:
+          $ref: '#/definitions/models.OrderItem'
+        type: array
+      price:
+        type: number
+      product_views:
+        items:
+          $ref: '#/definitions/models.ProductView'
+        type: array
+      recommendations:
+        items:
+          $ref: '#/definitions/models.Recommendation'
+        type: array
+      stock:
+        type: integer
+      updated_at:
+        type: string
+      user_interactions:
+        items:
+          $ref: '#/definitions/models.UserInteraction'
+        type: array
+    type: object
+  models.ProductView:
+    properties:
+      created_at:
+        description: Changed from Timestamp to CreatedAt for consistency
+        type: string
+      id:
+        type: string
+      product:
+        $ref: '#/definitions/models.Product'
+      product_id:
+        type: string
+      session_id:
+        type: string
+      user:
+        allOf:
+        - $ref: '#/definitions/models.User'
+        description: Relationships
+      user_id:
+        type: string
+    type: object
+  models.Recommendation:
+    properties:
+      algorithm_type:
+        description: '''collaborative'', ''content_based'', ''hybrid'''
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      product:
+        $ref: '#/definitions/models.Product'
+      product_id:
+        type: string
+      score:
+        type: number
+      user:
+        allOf:
+        - $ref: '#/definitions/models.User'
+        description: Relationships
+      user_id:
+        type: string
+    type: object
+  models.ShoppingCart:
+    properties:
+      cart_items:
+        items:
+          $ref: '#/definitions/models.CartItem'
+        type: array
+      created_at:
+        type: string
+      id:
+        type: string
+      updated_at:
+        type: string
+      user:
+        allOf:
+        - $ref: '#/definitions/models.User'
+        description: Relationships
+      user_id:
+        type: string
+    type: object
+  models.User:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      orders:
+        description: Relationships
+        items:
+          $ref: '#/definitions/models.Order'
+        type: array
+      recommendations:
+        items:
+          $ref: '#/definitions/models.Recommendation'
+        type: array
+      shopping_cart:
+        $ref: '#/definitions/models.ShoppingCart'
+      updated_at:
+        type: string
+      user_interactions:
+        items:
+          $ref: '#/definitions/models.UserInteraction'
+        type: array
+    type: object
+  models.UserInteraction:
+    properties:
+      created_at:
+        description: Changed from Timestamp to CreatedAt for consistency
+        type: string
+      id:
+        type: string
+      interaction_type:
+        description: '''view'', ''cart_add'', ''purchase'', ''like'''
+        type: string
+      product:
+        $ref: '#/definitions/models.Product'
+      product_id:
+        type: string
+      session_id:
+        type: string
+      user:
+        allOf:
+        - $ref: '#/definitions/models.User'
+        description: Relationships
+      user_id:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@bachelor-ecommerce.com
+    name: API Support
+    url: http://www.swagger.io/support
+  description: ML-Powered E-commerce Platform API with advanced recommendation system,
+    intelligent search, and comprehensive analytics
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Bachelor E-commerce API
+  version: "1.0"
+paths:
+  /analytics/dashboard:
+    get:
+      consumes:
+      - application/json
+      description: Get comprehensive dashboard analytics including user statistics
+        and recent interactions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Dashboard analytics retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get dashboard analytics
+      tags:
+      - Analytics
+  /analytics/export:
+    get:
+      consumes:
+      - application/json
+      description: Export user analytics data in JSON or CSV format
+      parameters:
+      - default: '"json"'
+        description: Export format (json, csv)
+        in: query
+        name: format
+        type: string
+      - default: 30
+        description: Number of days to export
+        in: query
+        name: days
+        type: integer
+      produces:
+      - application/json
+      - text/csv
+      responses:
+        "200":
+          description: Analytics data exported successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Unsupported format
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Export analytics data
+      tags:
+      - Analytics
+  /analytics/products:
+    get:
+      consumes:
+      - application/json
+      description: Get product performance analytics including top selling products,
+        most viewed, and category performance
+      parameters:
+      - default: 30
+        description: Number of days to analyze
+        in: query
+        name: days
+        type: integer
+      - default: 20
+        description: Number of items to return
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product analytics retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get product analytics
+      tags:
+      - Analytics
+  /analytics/recommendations/metrics:
+    get:
+      consumes:
+      - application/json
+      description: Get recommendation system performance metrics (placeholder endpoint)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Recommendation metrics retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get recommendation metrics
+      tags:
+      - Analytics
+  /analytics/search:
+    get:
+      consumes:
+      - application/json
+      description: Get search analytics and query performance metrics (placeholder
+        endpoint)
+      parameters:
+      - default: 30
+        description: Number of days to analyze
+        in: query
+        name: days
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Search analytics retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get search analytics
+      tags:
+      - Analytics
+  /analytics/trends:
+    get:
+      consumes:
+      - application/json
+      description: Get ML-powered trend analysis and predictions (placeholder endpoint)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ML trends retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get ML trends
+      tags:
+      - Analytics
+  /analytics/user:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed user analytics including interaction stats, category
+        preferences, and spending patterns
+      parameters:
+      - default: 30
+        description: Number of days to analyze
+        in: query
+        name: days
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User analytics retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user analytics
+      tags:
+      - Analytics
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user with email and password
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful
+          schema:
+            $ref: '#/definitions/handlers.AuthResponse'
+        "400":
+          description: Invalid request body or validation error
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+        "401":
+          description: Invalid email or password
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+      summary: User login
+      tags:
+      - Authentication
+  /auth/profile:
+    get:
+      consumes:
+      - application/json
+      description: Get the authenticated user's profile information
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User profile retrieved successfully
+          schema:
+            $ref: '#/definitions/models.User'
+        "401":
+          description: User not authenticated
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user profile
+      tags:
+      - Authentication
+    put:
+      consumes:
+      - application/json
+      description: Update the authenticated user's profile information
+      parameters:
+      - description: Profile update data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Profile updated successfully
+          schema:
+            $ref: '#/definitions/models.User'
+        "400":
+          description: Invalid request body or validation error
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+        "401":
+          description: User not authenticated
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update user profile
+      tags:
+      - Authentication
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user account with email, name, and password
+      parameters:
+      - description: Registration details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User registered successfully
+          schema:
+            $ref: '#/definitions/handlers.AuthResponse'
+        "400":
+          description: Invalid request body or validation error
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+        "409":
+          description: User with this email already exists
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+      summary: Register a new user
+      tags:
+      - Authentication
+  /cart:
+    get:
+      consumes:
+      - application/json
+      description: Get the current user's shopping cart with all items and total
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Cart retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get shopping cart
+      tags:
+      - Cart
+  /cart/add:
+    post:
+      consumes:
+      - application/json
+      description: Add a product to the user's shopping cart with specified quantity
+      parameters:
+      - description: Item to add to cart
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.AddToCartRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Item added to cart successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request or insufficient stock
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Product not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Add item to cart
+      tags:
+      - Cart
+  /cart/clear:
+    delete:
+      consumes:
+      - application/json
+      description: Remove all items from the user's shopping cart
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Cart cleared successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Cart not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Clear shopping cart
+      tags:
+      - Cart
+  /cart/item/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a specific item from the user's shopping cart
+      parameters:
+      - description: Cart Item ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Item removed from cart successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid item ID
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Cart item not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove item from cart
+      tags:
+      - Cart
+    put:
+      consumes:
+      - application/json
+      description: Update the quantity of a specific item in the user's cart
+      parameters:
+      - description: Cart Item ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New quantity (0 to remove item)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateCartItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Cart item updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request or insufficient stock
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Cart item not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update cart item quantity
+      tags:
+      - Cart
+  /orders:
+    get:
+      consumes:
+      - application/json
+      description: Get paginated list of user's order history with order items
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Orders retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user orders
+      tags:
+      - Orders
+    post:
+      consumes:
+      - application/json
+      description: Create a new order from the user's current cart items with atomic
+        stock management
+      parameters:
+      - description: Order creation data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Order created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request, empty cart, or insufficient stock
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Cart not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create order from cart
+      tags:
+      - Orders
+  /orders/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific order
+      parameters:
+      - description: Order ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Order retrieved successfully
+          schema:
+            $ref: '#/definitions/models.Order'
+        "400":
+          description: Invalid order ID
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Order not found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get order by ID
+      tags:
+      - Orders
+  /orders/{id}/cancel:
+    put:
+      consumes:
+      - application/json
+      description: Cancel a pending order and restore product stock
+      parameters:
+      - description: Order ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Order cancelled successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid order ID or order cannot be cancelled
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Order not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Cancel order
+      tags:
+      - Orders
+  /orders/{id}/status:
+    put:
+      consumes:
+      - application/json
+      description: Update the status of an order with validation for status transitions
+        (admin access required)
+      parameters:
+      - description: Order ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New order status
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateOrderStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Order status updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request or status transition
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Order not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update order status
+      tags:
+      - Orders
+  /orders/stats:
+    get:
+      consumes:
+      - application/json
+      description: Get comprehensive order statistics for the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Order statistics retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get order statistics
+      tags:
+      - Orders
+  /products:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated list of products with optional filtering and sorting
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by category
+        in: query
+        name: category
+        type: string
+      - description: Search in name and description
+        in: query
+        name: search
+        type: string
+      - default: '"created_at"'
+        description: Sort field (price, name, created_at)
+        in: query
+        name: sort
+        type: string
+      - default: '"desc"'
+        description: Sort order (asc, desc)
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Products retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get products
+      tags:
+      - Products
+    post:
+      consumes:
+      - application/json
+      description: Create a new product in the catalog (admin access required)
+      parameters:
+      - description: Product creation data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Product created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request body or validation error
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Authentication required
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new product
+      tags:
+      - Products
+  /products/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a product from the catalog (admin access required)
+      parameters:
+      - description: Product ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product deleted successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid product ID or product has order history
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Authentication required
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Product not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a product
+      tags:
+      - Products
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific product
+      parameters:
+      - description: Product ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product retrieved successfully
+          schema:
+            $ref: '#/definitions/models.Product'
+        "400":
+          description: Invalid product ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Product not found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get product by ID
+      tags:
+      - Products
+    put:
+      consumes:
+      - application/json
+      description: Update an existing product in the catalog (admin access required)
+      parameters:
+      - description: Product ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Product update data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request body or product ID
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Authentication required
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Product not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update a product
+      tags:
+      - Products
+  /products/recommendations:
+    get:
+      consumes:
+      - application/json
+      description: Get personalized product recommendations using ML algorithms
+      parameters:
+      - default: 10
+        description: Number of recommendations
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Recommendations retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Authentication required for recommendations
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get product recommendations
+      tags:
+      - Products
+  /products/search:
+    get:
+      consumes:
+      - application/json
+      description: Search products using advanced ML-powered search with TF-IDF vectorization
+      parameters:
+      - description: Search query
+        in: query
+        name: q
+        required: true
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Search results retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Search query is required
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Search products
+      tags:
+      - Products
+schemes:
+- http
+- https
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
+tags:
+- description: User authentication and profile management
+  name: Authentication
+- description: Product catalog management and search
+  name: Products
+- description: Shopping cart operations
+  name: Cart
+- description: Order management and tracking
+  name: Orders
+- description: Business analytics and reporting
+  name: Analytics
+- description: Machine Learning services and model management
+  name: ML

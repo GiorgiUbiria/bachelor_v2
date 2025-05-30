@@ -251,14 +251,12 @@ class EnhancedSearchEngine:
             if similarities[idx] > 0:  # Only include relevant results
                 product = self.product_data.iloc[idx]
                 results.append({
-                    'id': product['id'],
-                    'name': product['name'],
-                    'description': product['description'],
-                    'category': product['category'],
-                    'price': product['price'],
-                    'stock': product['stock'],
-                    'brand': product['brand'],
-                    'tags': product['tags'],
+                    'id': str(product['id']),
+                    'name': str(product['name']),
+                    'description': str(product['description']),
+                    'category': str(product['category']),
+                    'price': float(product['price']),
+                    'stock': int(product['stock']),
                     'relevance_score': float(similarities[idx]),
                     'created_at': product['created_at'].isoformat() if pd.notna(product['created_at']) else None
                 })
@@ -268,7 +266,8 @@ class EnhancedSearchEngine:
     async def _personalize_results(self, results: List[Dict[str, Any]], user_id: str) -> List[Dict[str, Any]]:
         """Personalize search results based on user behavior"""
         try:
-            async with get_db_connection() as conn:
+            conn = await get_db_connection()
+            try:
                 # Get user interaction history
                 query = """
                 SELECT product_id, interaction_type, COUNT(*) as interaction_count
@@ -309,6 +308,8 @@ class EnhancedSearchEngine:
                         result['personalized'] = True
                     else:
                         result['personalized'] = False
+            finally:
+                await release_db_connection(conn)
                         
         except Exception as e:
             logger.error(f"Personalization failed: {e}")
@@ -331,11 +332,14 @@ class EnhancedSearchEngine:
     async def _log_search_query(self, query: str, user_id: Optional[str], results_count: int):
         """Log search query for analytics"""
         try:
-            async with get_db_connection() as conn:
+            conn = await get_db_connection()
+            try:
                 await conn.execute("""
                     INSERT INTO search_queries (query, user_id, results_count, created_at)
                     VALUES ($1, $2, $3, $4)
                 """, query, user_id, results_count, datetime.now())
+            finally:
+                await release_db_connection(conn)
         except Exception as e:
             logger.error(f"Failed to log search query: {e}")
 
@@ -363,7 +367,8 @@ class EnhancedSearchEngine:
     async def get_search_analytics(self, days: int = 30) -> Dict[str, Any]:
         """Get search analytics"""
         try:
-            async with get_db_connection() as conn:
+            conn = await get_db_connection()
+            try:
                 cutoff_date = datetime.now() - timedelta(days=days)
                 
                 # Top search queries
@@ -401,6 +406,8 @@ class EnhancedSearchEngine:
                     'zero_results': [dict(row) for row in zero_results],
                     'total_searches': sum(row['search_count'] for row in top_queries)
                 }
+            finally:
+                await release_db_connection(conn)
                 
         except Exception as e:
             logger.error(f"Failed to get search analytics: {e}")

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   postgres:
@@ -13,16 +11,21 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
     networks:
       - bachelor_network
 
   # Go Backend API
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    build: ./backend
     container_name: bachelor_backend
+    ports:
+      - "8081:8080"
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
@@ -31,53 +34,49 @@ services:
       - DB_NAME=bachelor_db
       - JWT_SECRET=your-super-secret-jwt-key-change-in-production
       - ML_SERVICE_URL=http://ml_service:8000
-      - PORT=8080
-    ports:
-      - "8080:8080"
+      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173,http://frontend:80,http://bachelor_frontend:80
     depends_on:
-      - postgres
-      - ml_service
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
     networks:
       - bachelor_network
-    volumes:
-      - ./backend:/app
-    restart: unless-stopped
 
   # Python ML Service
   ml_service:
-    build:
-      context: ./ml_service
-      dockerfile: Dockerfile
+    build: ./ml_service
     container_name: bachelor_ml_service
+    ports:
+      - "8000:8000"
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_USER=postgres
       - DB_PASSWORD=postgres123
       - DB_NAME=bachelor_db
-    ports:
-      - "8000:8000"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
     networks:
       - bachelor_network
-    volumes:
-      - ./ml_service:/app
-    restart: unless-stopped
 
   # React Frontend with Nginx
   frontend:
-    build:
+    build: 
       context: ./frontend
-      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=http://localhost:8081
+        - VITE_ML_API_URL=http://localhost:8000
     container_name: bachelor_frontend
     ports:
       - "3000:80"
     depends_on:
       - backend
+      - ml_service
+    restart: unless-stopped
     networks:
       - bachelor_network
-    restart: unless-stopped
 
 volumes:
   postgres_data:

@@ -4,6 +4,7 @@ import Home from "./pages/home";
 import Login from "./pages/login";
 import Register from "./pages/register";
 import Products from "./pages/products";
+import ProductDetail from "./pages/product-detail";
 import Admin from "./pages/admin";
 
 export const router = createBrowserRouter([
@@ -21,7 +22,10 @@ export const router = createBrowserRouter([
         },
         {
           path: "products",
-          Component: Products,
+          children: [
+            { index: true, Component: Products },
+            { path: ":id", Component: ProductDetail },
+          ],
         },
         {
           path: "admin",

@@ -64,7 +64,7 @@ func (ml *MLClient) GenerateRecommendations(userID uuid.UUID, algorithm string, 
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/api/v1/recommendations/generate", ml.baseURL)
+	url := fmt.Sprintf("%s/generate", ml.baseURL)
 	resp, err := ml.client.Post(url, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to call ML service: %w", err)
@@ -86,7 +86,7 @@ func (ml *MLClient) GenerateRecommendations(userID uuid.UUID, algorithm string, 
 
 // TrainModels calls the ML service to train recommendation models
 func (ml *MLClient) TrainModels() error {
-	url := fmt.Sprintf("%s/api/v1/recommendations/train", ml.baseURL)
+	url := fmt.Sprintf("%s/train", ml.baseURL)
 	resp, err := ml.client.Post(url, "application/json", nil)
 	if err != nil {
 		return fmt.Errorf("failed to call ML service: %w", err)
@@ -103,7 +103,7 @@ func (ml *MLClient) TrainModels() error {
 
 // GetMLStatus checks the status of ML models
 func (ml *MLClient) GetMLStatus() (map[string]interface{}, error) {
-	url := fmt.Sprintf("%s/api/v1/recommendations/status", ml.baseURL)
+	url := fmt.Sprintf("%s/status", ml.baseURL)
 	resp, err := ml.client.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to call ML service: %w", err)

@@ -60,8 +60,20 @@ export const useCartStore = create<CartState & CartActions>()(
 
           const response = await apiService.cart.get()
           
+          // Transform backend response to match frontend interface
+          const backendCart = response.data.cart
+          const transformedCart: Cart = {
+            id: backendCart.id,
+            user_id: backendCart.user_id,
+            items: backendCart.cart_items || [],
+            total_items: response.data.item_count || 0,
+            total_amount: response.data.total || 0,
+            created_at: backendCart.created_at,
+            updated_at: backendCart.updated_at
+          }
+          
           set((state) => {
-            state.cart = response.data
+            state.cart = transformedCart
             state.isLoading = false
           })
         } catch (error) {
@@ -78,10 +90,23 @@ export const useCartStore = create<CartState & CartActions>()(
             state.error = null
           })
 
-          const response = await apiService.cart.addItem(productId, quantity)
+          await apiService.cart.addItem(productId, quantity)
+          
+          // Refetch cart to get updated data
+          const response = await apiService.cart.get()
+          const backendCart = response.data.cart
+          const transformedCart: Cart = {
+            id: backendCart.id,
+            user_id: backendCart.user_id,
+            items: backendCart.cart_items || [],
+            total_items: response.data.item_count || 0,
+            total_amount: response.data.total || 0,
+            created_at: backendCart.created_at,
+            updated_at: backendCart.updated_at
+          }
           
           set((state) => {
-            state.cart = response.data
+            state.cart = transformedCart
           })
         } catch (error) {
           set((state) => {
@@ -97,10 +122,23 @@ export const useCartStore = create<CartState & CartActions>()(
             state.error = null
           })
 
-          const response = await apiService.cart.updateItem(itemId, quantity)
+          await apiService.cart.updateItem(itemId, quantity)
+          
+          // Refetch cart to get updated data
+          const response = await apiService.cart.get()
+          const backendCart = response.data.cart
+          const transformedCart: Cart = {
+            id: backendCart.id,
+            user_id: backendCart.user_id,
+            items: backendCart.cart_items || [],
+            total_items: response.data.item_count || 0,
+            total_amount: response.data.total || 0,
+            created_at: backendCart.created_at,
+            updated_at: backendCart.updated_at
+          }
           
           set((state) => {
-            state.cart = response.data
+            state.cart = transformedCart
           })
         } catch (error) {
           set((state) => {
@@ -116,10 +154,23 @@ export const useCartStore = create<CartState & CartActions>()(
             state.error = null
           })
 
-          const response = await apiService.cart.removeItem(itemId)
+          await apiService.cart.removeItem(itemId)
+          
+          // Refetch cart to get updated data
+          const response = await apiService.cart.get()
+          const backendCart = response.data.cart
+          const transformedCart: Cart = {
+            id: backendCart.id,
+            user_id: backendCart.user_id,
+            items: backendCart.cart_items || [],
+            total_items: response.data.item_count || 0,
+            total_amount: response.data.total || 0,
+            created_at: backendCart.created_at,
+            updated_at: backendCart.updated_at
+          }
           
           set((state) => {
-            state.cart = response.data
+            state.cart = transformedCart
           })
         } catch (error) {
           set((state) => {

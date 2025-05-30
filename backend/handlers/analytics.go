@@ -9,12 +9,21 @@ import (
 	"bachelor_backend/middleware"
 	"bachelor_backend/models"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
 
 // GetDashboard returns comprehensive dashboard analytics
-func GetDashboard(c fiber.Ctx) error {
+// @Summary Get dashboard analytics
+// @Description Get comprehensive dashboard analytics including user statistics and recent interactions
+// @Tags Analytics
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{} "Dashboard analytics retrieved successfully"
+// @Failure 401 {object} map[string]interface{} "User not authenticated"
+// @Router /analytics/dashboard [get]
+func GetDashboard(c *fiber.Ctx) error {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -68,7 +77,18 @@ func GetDashboard(c fiber.Ctx) error {
 }
 
 // GetUserAnalytics returns detailed user analytics
-func GetUserAnalytics(c fiber.Ctx) error {
+// @Summary Get user analytics
+// @Description Get detailed user analytics including interaction stats, category preferences, and spending patterns
+// @Tags Analytics
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param days query int false "Number of days to analyze" default(30)
+// @Success 200 {object} map[string]interface{} "User analytics retrieved successfully"
+// @Failure 401 {object} map[string]interface{} "User not authenticated"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /analytics/user [get]
+func GetUserAnalytics(c *fiber.Ctx) error {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -129,7 +149,18 @@ func GetUserAnalytics(c fiber.Ctx) error {
 }
 
 // GetProductAnalytics returns product performance analytics
-func GetProductAnalytics(c fiber.Ctx) error {
+// @Summary Get product analytics
+// @Description Get product performance analytics including top selling products, most viewed, and category performance
+// @Tags Analytics
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param days query int false "Number of days to analyze" default(30)
+// @Param limit query int false "Number of items to return" default(20)
+// @Success 200 {object} map[string]interface{} "Product analytics retrieved successfully"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /analytics/products [get]
+func GetProductAnalytics(c *fiber.Ctx) error {
 	days, _ := strconv.Atoi(c.Query("days", "30"))
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
 	cutoffDate := time.Now().AddDate(0, 0, -days)
@@ -199,7 +230,15 @@ func GetProductAnalytics(c fiber.Ctx) error {
 }
 
 // GetMLTrends returns ML-powered trend analysis (placeholder)
-func GetMLTrends(c fiber.Ctx) error {
+// @Summary Get ML trends
+// @Description Get ML-powered trend analysis and predictions (placeholder endpoint)
+// @Tags Analytics
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{} "ML trends retrieved successfully"
+// @Router /analytics/trends [get]
+func GetMLTrends(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"message": "ML trends analysis coming soon",
 		"status":  "placeholder",
@@ -207,7 +246,16 @@ func GetMLTrends(c fiber.Ctx) error {
 }
 
 // GetSearchAnalytics returns search analytics (placeholder)
-func GetSearchAnalytics(c fiber.Ctx) error {
+// @Summary Get search analytics
+// @Description Get search analytics and query performance metrics (placeholder endpoint)
+// @Tags Analytics
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param days query int false "Number of days to analyze" default(30)
+// @Success 200 {object} map[string]interface{} "Search analytics retrieved successfully"
+// @Router /analytics/search [get]
+func GetSearchAnalytics(c *fiber.Ctx) error {
 	days, _ := strconv.Atoi(c.Query("days", "30"))
 
 	return c.JSON(fiber.Map{
@@ -218,7 +266,16 @@ func GetSearchAnalytics(c fiber.Ctx) error {
 }
 
 // GetRecommendationMetrics returns recommendation system metrics (placeholder)
-func GetRecommendationMetrics(c fiber.Ctx) error {
+// @Summary Get recommendation metrics
+// @Description Get recommendation system performance metrics (placeholder endpoint)
+// @Tags Analytics
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{} "Recommendation metrics retrieved successfully"
+// @Failure 401 {object} map[string]interface{} "User not authenticated"
+// @Router /analytics/recommendations/metrics [get]
+func GetRecommendationMetrics(c *fiber.Ctx) error {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -234,7 +291,19 @@ func GetRecommendationMetrics(c fiber.Ctx) error {
 }
 
 // ExportAnalytics exports analytics data
-func ExportAnalytics(c fiber.Ctx) error {
+// @Summary Export analytics data
+// @Description Export user analytics data in JSON or CSV format
+// @Tags Analytics
+// @Accept json
+// @Produce json,text/csv
+// @Security BearerAuth
+// @Param format query string false "Export format (json, csv)" default("json")
+// @Param days query int false "Number of days to export" default(30)
+// @Success 200 {object} map[string]interface{} "Analytics data exported successfully"
+// @Failure 400 {object} map[string]interface{} "Unsupported format"
+// @Failure 401 {object} map[string]interface{} "User not authenticated"
+// @Router /analytics/export [get]
+func ExportAnalytics(c *fiber.Ctx) error {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -286,7 +355,7 @@ func ExportAnalytics(c fiber.Ctx) error {
 
 		for _, interaction := range interactions {
 			csvData += fmt.Sprintf("Interaction,%s,%s,%s,0\n",
-				interaction.Timestamp.Format("2006-01-02"),
+				interaction.CreatedAt.Format("2006-01-02"),
 				interaction.Product.Name,
 				interaction.Product.Category)
 		}
