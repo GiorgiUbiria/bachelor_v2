@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Upvotes } from '../components/upvotes'
 
 import apiService from '../services/api'
 import { useAuthStore } from '../store/auth'
@@ -227,15 +228,18 @@ export default function ProductsPage() {
         
         <div className="flex items-center justify-between mb-3">
           <span className="text-lg font-bold">${product.price}</span>
-          {product.rating && (
-            <div className="flex items-center gap-1">
-              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-              <span className="text-sm">{product.rating}</span>
-              {product.reviews_count && (
-                <span className="text-xs text-muted-foreground">({product.reviews_count})</span>
-              )}
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {product.rating && (
+              <div className="flex items-center gap-1">
+                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                <span className="text-sm">{product.rating}</span>
+                {product.reviews_count && (
+                  <span className="text-xs text-muted-foreground">({product.reviews_count})</span>
+                )}
+              </div>
+            )}
+            <Upvotes productId={product.id} variant="minimal" />
+          </div>
         </div>
         
         <div className="flex gap-2">

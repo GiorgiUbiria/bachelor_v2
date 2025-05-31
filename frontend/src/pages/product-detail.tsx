@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router'
 import { 
   ShoppingCart, Heart, Star, Share2, ArrowLeft, Package, 
   Truck, Shield, RotateCcw, MessageCircle, 
-  Tag, Sparkles, TrendingUp, Zap, BarChart3 
+  Tag, Sparkles, TrendingUp, Zap, BarChart3, ThumbsUp
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,10 +13,13 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
+import { CommentsManager } from '../components/comments-manager'
+import { Upvotes } from '../components/upvotes'
 import apiService from '../services/api'
 import { useAuthStore } from '../store/auth'
 import { useCartStore } from '../store/cart'
 import { useUIStore } from '../store/ui'
+import { useCommentsStore } from '../store/comments'
 
 interface Product {
   id: string
@@ -31,14 +34,6 @@ interface Product {
   tags?: string[]
   created_at: string
   updated_at: string
-}
-
-interface Comment {
-  id: string
-  content: string
-  rating: number
-  user_name: string
-  created_at: string
 }
 
 interface SentimentData {
@@ -62,9 +57,9 @@ export default function ProductDetailPage() {
   const { isAuthenticated } = useAuthStore()
   const { addItem } = useCartStore()
   const { addToast } = useUIStore()
+  const { commentsByProduct } = useCommentsStore()
   
   const [product, setProduct] = useState<Product | null>(null)
-  const [comments, setComments] = useState<Comment[]>([])
   const [similarProducts, setSimilarProducts] = useState<Product[]>([])
   const [sentimentData, setSentimentData] = useState<SentimentData | null>(null)
   const [smartDiscount, setSmartDiscount] = useState<SmartDiscount | null>(null)
@@ -72,6 +67,9 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true)
   const [quantity, setQuantity] = useState(1)
   const [isFavorite, setIsFavorite] = useState(false)
+
+  // Get comments count from the store
+  const comments = id ? commentsByProduct[id] || [] : []
 
   useEffect(() => {
     if (!id) return
@@ -81,41 +79,36 @@ export default function ProductDetailPage() {
         setLoading(true)
         
         // Fetch product details
-        const [productResponse, commentsResponse] = await Promise.all([
-          apiService.products.getById(id),
-          apiService.comments.getByProduct(id)
-        ])
-        
+        const productResponse = await apiService.products.getById(id)
         setProduct(productResponse.data)
-        setComments(commentsResponse.data.comments || [])
         
         // Fetch ML-powered features
         const mlPromises = []
         
         // Similar products
         mlPromises.push(
-          apiService.mlService.recommendations.similar(id, 4)
-            .then(response => setSimilarProducts(response.data.products || []))
+          apiService.products.getRecommendations({ product_id: id, limit: 4 })
+            .then((response: any) => setSimilarProducts(response.data.products || []))
             .catch(console.error)
         )
         
         // Sentiment analysis
         mlPromises.push(
-          apiService.ml.sentiment.analyzeProduct(id)
+          apiService.mlService.sentiment.product(id)
             .then(response => setSentimentData(response.data))
             .catch(console.error)
         )
         
         // Smart discount suggestions
         mlPromises.push(
-          apiService.ml.smartDiscounts.suggestForProduct(id)
+          apiService.mlService.smartDiscounts.suggestProduct(id)
             .then(response => setSmartDiscount(response.data.discount))
             .catch(console.error)
         )
         
         // Auto-tagging suggestions
         mlPromises.push(
-          apiService.ml.autoTagging.suggest(id)
+          apiService.mlService.autoTagging.suggest(id)
             .then(response => setSuggestedTags(response.data.suggested_tags || []))
             .catch(console.error)
         )
@@ -207,37 +200,24 @@ export default function ProductDetailPage() {
   if (!product) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <Card className="p-12 text-center">
-          <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-lg font-medium mb-2">Product not found</h3>
-          <p className="text-muted-foreground mb-4">The product you're looking for doesn't exist.</p>
-          <Button asChild>
-            <Link to="/products">Browse Products</Link>
-          </Button>
-        </Card>
+        <Alert>
+          <AlertDescription>Product not found</AlertDescription>
+        </Alert>
       </div>
     )
   }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 mb-6 text-sm text-muted-foreground">
-        <Link to="/" className="hover:text-foreground">Home</Link>
-        <span>/</span>
-        <Link to="/products" className="hover:text-foreground">Products</Link>
-        <span>/</span>
-        <span className="text-foreground">{product.name}</span>
-      </div>
-
       {/* Back Button */}
-      <Button variant="ghost" className="mb-6" asChild>
+      <Button variant="outline" className="mb-6" asChild>
         <Link to="/products">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Products
         </Link>
       </Button>
 
+      {/* Product Details */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
         {/* Product Image */}
         <div className="space-y-4">
@@ -274,14 +254,17 @@ export default function ProductDetailPage() {
           <div>
             <div className="flex items-start justify-between mb-2">
               <h1 className="text-3xl font-bold">{product.name}</h1>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleToggleFavorite}
-                className={isFavorite ? 'text-red-500' : ''}
-              >
-                <Heart className={`h-5 w-5 ${isFavorite ? 'fill-current' : ''}`} />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleToggleFavorite}
+                  className={isFavorite ? 'text-red-500' : ''}
+                >
+                  <Heart className={`h-5 w-5 ${isFavorite ? 'fill-current' : ''}`} />
+                </Button>
+                <Upvotes productId={product.id} variant="compact" />
+              </div>
             </div>
             
             <div className="flex items-center gap-4 mb-4">
@@ -317,7 +300,7 @@ export default function ProductDetailPage() {
           </p>
 
           {/* Tags */}
-          {(product.tags || suggestedTags).length > 0 && (
+          {(product.tags?.length || suggestedTags.length > 0) && (
             <div className="space-y-2">
               <h3 className="font-medium flex items-center gap-2">
                 <Tag className="h-4 w-4" />
@@ -351,68 +334,69 @@ export default function ProductDetailPage() {
           </div>
 
           {/* Quantity and Add to Cart */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <label className="font-medium">Quantity:</label>
-              <div className="flex items-center border rounded-md">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  disabled={quantity <= 1}
+          {product.stock > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <label className="font-medium">Quantity:</label>
+                <div className="flex items-center border rounded-md">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    disabled={quantity <= 1}
+                  >
+                    -
+                  </Button>
+                  <span className="px-4 py-2 min-w-[3rem] text-center">{quantity}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+                    disabled={quantity >= product.stock}
+                  >
+                    +
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <Button 
+                  className="flex-1" 
+                  onClick={handleAddToCart}
+                  disabled={product.stock === 0}
                 >
-                  -
+                  <ShoppingCart className="mr-2 h-4 w-4" />
+                  Add to Cart
                 </Button>
-                <span className="px-4 py-2 min-w-[3rem] text-center">{quantity}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
-                  disabled={quantity >= product.stock}
-                >
-                  +
+                <Button variant="outline" size="icon">
+                  <Share2 className="h-4 w-4" />
                 </Button>
               </div>
             </div>
-
-            <div className="flex gap-3">
-              <Button 
-                className="flex-1" 
-                onClick={handleAddToCart}
-                disabled={product.stock === 0}
-              >
-                <ShoppingCart className="mr-2 h-4 w-4" />
-                Add to Cart
-              </Button>
-              <Button variant="outline" size="icon">
-                <Share2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+          )}
 
           {/* Features */}
-          <div className="grid grid-cols-2 gap-4 pt-6 border-t">
-            <div className="flex items-center gap-2 text-sm">
-              <Truck className="h-4 w-4 text-muted-foreground" />
-              <span>Free shipping</span>
+          <div className="grid grid-cols-3 gap-4 pt-6 border-t">
+            <div className="text-center">
+              <Truck className="h-6 w-6 mx-auto mb-2 text-primary" />
+              <p className="text-sm font-medium">Free Shipping</p>
+              <p className="text-xs text-muted-foreground">On orders over $50</p>
             </div>
-            <div className="flex items-center gap-2 text-sm">
-              <Shield className="h-4 w-4 text-muted-foreground" />
-              <span>Secure payment</span>
+            <div className="text-center">
+              <Shield className="h-6 w-6 mx-auto mb-2 text-primary" />
+              <p className="text-sm font-medium">Secure Payment</p>
+              <p className="text-xs text-muted-foreground">SSL encrypted</p>
             </div>
-            <div className="flex items-center gap-2 text-sm">
-              <RotateCcw className="h-4 w-4 text-muted-foreground" />
-              <span>Easy returns</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <MessageCircle className="h-4 w-4 text-muted-foreground" />
-              <span>24/7 support</span>
+            <div className="text-center">
+              <RotateCcw className="h-6 w-6 mx-auto mb-2 text-primary" />
+              <p className="text-sm font-medium">Easy Returns</p>
+              <p className="text-xs text-muted-foreground">30-day policy</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Tabs Section */}
+      {/* Product Tabs */}
       <Tabs defaultValue="details" className="mb-12">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="details">Details</TabsTrigger>
@@ -464,50 +448,7 @@ export default function ProductDetailPage() {
         </TabsContent>
 
         <TabsContent value="reviews" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Customer Reviews</CardTitle>
-              <CardDescription>
-                See what other customers are saying about this product
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {comments.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <MessageCircle className="h-12 w-12 mx-auto mb-4" />
-                  <p>No reviews yet. Be the first to review this product!</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {comments.map((comment) => (
-                    <div key={comment.id} className="border-b pb-4 last:border-b-0">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{comment.user_name}</span>
-                          <div className="flex items-center">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`h-4 w-4 ${
-                                  i < comment.rating
-                                    ? 'fill-yellow-400 text-yellow-400'
-                                    : 'text-muted-foreground'
-                                }`}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                        <span className="text-sm text-muted-foreground">
-                          {new Date(comment.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <p className="text-muted-foreground">{comment.content}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <CommentsManager productId={product.id} productName={product.name} />
         </TabsContent>
 
         <TabsContent value="sentiment" className="mt-6">
