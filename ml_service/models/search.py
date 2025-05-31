@@ -233,7 +233,7 @@ class EnhancedSearchEngine:
             }
 
     async def _semantic_search(self, query: str, limit: int) -> List[Dict[str, Any]]:
-        """Perform semantic search using TF-IDF"""
+        """Perform semantic search using TF-IDF with detailed reasoning"""
         if self.tfidf_vectorizer is None or self.product_features is None:
             return []
             
@@ -243,13 +243,89 @@ class EnhancedSearchEngine:
         # Calculate similarities
         similarities = cosine_similarity(query_vector, self.product_features).flatten()
         
+        # Get query terms for reasoning
+        query_terms = query.lower().split()
+        feature_names = self.tfidf_vectorizer.get_feature_names_out()
+        query_tfidf_scores = query_vector.toarray()[0]
+        
+        # Identify important query terms
+        important_terms = []
+        for i, score in enumerate(query_tfidf_scores):
+            if score > 0:
+                important_terms.append({
+                    'term': feature_names[i],
+                    'tfidf_score': float(score)
+                })
+        important_terms.sort(key=lambda x: x['tfidf_score'], reverse=True)
+        
         # Get top results
         top_indices = similarities.argsort()[-limit:][::-1]
         
         results = []
-        for idx in top_indices:
+        for rank, idx in enumerate(top_indices):
             if similarities[idx] > 0:  # Only include relevant results
                 product = self.product_data.iloc[idx]
+                similarity_score = similarities[idx]
+                
+                # Analyze why this product matched
+                product_text = product['search_text']
+                matched_terms = []
+                
+                for term_info in important_terms[:5]:  # Top 5 query terms
+                    term = term_info['term']
+                    if term in product_text:
+                        # Count occurrences and find context
+                        occurrences = product_text.count(term)
+                        matched_terms.append({
+                            'term': term,
+                            'query_importance': term_info['tfidf_score'],
+                            'occurrences': occurrences,
+                            'match_strength': term_info['tfidf_score'] * occurrences
+                        })
+                
+                # Determine match type
+                name_matches = sum(1 for term in query_terms if term in product['name'].lower())
+                category_matches = sum(1 for term in query_terms if term in product['category'].lower())
+                description_matches = sum(1 for term in query_terms if term in product['description'].lower())
+                
+                match_types = []
+                if name_matches > 0:
+                    match_types.append(f"Product name ({name_matches} terms)")
+                if category_matches > 0:
+                    match_types.append(f"Category ({category_matches} terms)")
+                if description_matches > 0:
+                    match_types.append(f"Description ({description_matches} terms)")
+                
+                # Determine confidence
+                confidence = 'High' if similarity_score > 0.5 and len(matched_terms) >= 2 else \
+                            'Medium' if similarity_score > 0.2 and len(matched_terms) >= 1 else 'Low'
+                
+                # Create detailed reasoning
+                reasoning = {
+                    'method': 'Semantic Search (TF-IDF)',
+                    'explanation': f'Matches {len(matched_terms)} key terms from your search with {similarity_score:.3f} similarity',
+                    'confidence': confidence,
+                    'factors': [
+                        f'Search rank: #{rank + 1}',
+                        f'Similarity score: {similarity_score:.3f}',
+                        f'Matched terms: {len(matched_terms)}',
+                        f'Match locations: {", ".join(match_types) if match_types else "General content"}'
+                    ],
+                    'technical_details': {
+                        'algorithm': 'TF-IDF Vectorization + Cosine Similarity',
+                        'query_terms_analyzed': len(important_terms),
+                        'total_vocabulary': len(feature_names),
+                        'similarity_threshold': 0.0,
+                        'ranking_method': 'Descending by cosine similarity'
+                    },
+                    'matched_terms': matched_terms[:3],  # Top 3 matched terms
+                    'query_analysis': {
+                        'original_query': query,
+                        'important_terms': [t['term'] for t in important_terms[:5]],
+                        'query_complexity': len(query_terms)
+                    }
+                }
+                
                 results.append({
                     'id': str(product['id']),
                     'name': str(product['name']),
@@ -257,8 +333,9 @@ class EnhancedSearchEngine:
                     'category': str(product['category']),
                     'price': float(product['price']),
                     'stock': int(product['stock']),
-                    'relevance_score': float(similarities[idx]),
-                    'created_at': product['created_at'].isoformat() if pd.notna(product['created_at']) else None
+                    'relevance_score': float(similarity_score),
+                    'created_at': product['created_at'].isoformat() if pd.notna(product['created_at']) else None,
+                    'reasoning': reasoning
                 })
                 
         return results

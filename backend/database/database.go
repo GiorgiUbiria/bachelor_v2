@@ -130,6 +130,9 @@ func AutoMigrate() error {
 		&models.Discount{},
 		&models.Tag{},
 		&models.ProductTag{},
+		&models.RequestLog{},
+		&models.AnomalyAlert{},
+		&models.SecurityMetrics{},
 	}
 
 	var migrationErrors []error

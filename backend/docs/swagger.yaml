@@ -117,9 +117,10 @@ definitions:
   handlers.CreateOrderRequest:
     properties:
       cart_item_ids:
-        description: 'Optional: specific cart items to order'
+        description: 'Optional: specific cart items to order (as string UUIDs)'
         example:
-        - '["123e4567-e89b-12d3-a456-426614174000"]'
+        - 123e4567-e89b-12d3-a456-426614174000
+        - 456e7890-e89b-12d3-a456-426614174001
         items:
           type: string
         type: array
@@ -227,6 +228,29 @@ definitions:
     - email
     - name
     - password
+    type: object
+  handlers.ResolveAlertRequest:
+    properties:
+      notes:
+        example: False positive - legitimate admin access
+        type: string
+    type: object
+  handlers.SecurityDashboardResponse:
+    properties:
+      ml_dashboard:
+        additionalProperties: true
+        type: object
+      recent_alerts:
+        items:
+          $ref: '#/definitions/models.AnomalyAlert'
+        type: array
+      security_metrics:
+        items:
+          $ref: '#/definitions/models.SecurityMetrics'
+        type: array
+      summary:
+        additionalProperties: true
+        type: object
     type: object
   handlers.StandardErrorResponse:
     properties:
@@ -398,6 +422,45 @@ definitions:
         items:
           $ref: '#/definitions/models.ProductView'
         type: array
+    type: object
+  models.AnomalyAlert:
+    properties:
+      anomaly_reasons:
+        description: JSON array of reasons
+        type: string
+      anomaly_score:
+        type: number
+      created_at:
+        type: string
+      id:
+        type: string
+      ip_address:
+        type: string
+      is_resolved:
+        type: boolean
+      notes:
+        type: string
+      request_log:
+        allOf:
+        - $ref: '#/definitions/models.RequestLog'
+        description: Relationships
+      request_log_id:
+        type: string
+      resolved_at:
+        type: string
+      resolved_by:
+        type: string
+      resolved_by_user:
+        $ref: '#/definitions/models.User'
+      risk_level:
+        description: '''low'', ''medium'', ''high'', ''critical'''
+        type: string
+      updated_at:
+        type: string
+      user:
+        $ref: '#/definitions/models.User'
+      user_id:
+        type: string
     type: object
   models.CartItem:
     properties:
@@ -651,6 +714,40 @@ definitions:
       user_id:
         type: string
     type: object
+  models.RequestLog:
+    properties:
+      id:
+        type: string
+      ip_address:
+        type: string
+      method:
+        type: string
+      path:
+        type: string
+      query_params:
+        type: string
+      request_size:
+        type: integer
+      response_size:
+        type: integer
+      response_time:
+        description: in milliseconds
+        type: number
+      session_id:
+        type: string
+      status_code:
+        type: integer
+      timestamp:
+        type: string
+      user:
+        allOf:
+        - $ref: '#/definitions/models.User'
+        description: Relationships
+      user_agent:
+        type: string
+      user_id:
+        type: string
+    type: object
   models.SearchQuery:
     properties:
       created_at:
@@ -669,6 +766,31 @@ definitions:
         - $ref: '#/definitions/models.User'
         description: Relationships
       user_id:
+        type: string
+    type: object
+  models.SecurityMetrics:
+    properties:
+      anomalous_requests:
+        type: integer
+      avg_response_time:
+        type: number
+      blocked_requests:
+        type: integer
+      created_at:
+        type: string
+      date:
+        type: string
+      error_rate:
+        type: number
+      high_risk_requests:
+        type: integer
+      id:
+        type: string
+      total_requests:
+        type: integer
+      unique_ips:
+        type: integer
+      updated_at:
         type: string
     type: object
   models.ShoppingCart:
@@ -2089,8 +2211,8 @@ paths:
       description: Create a new order from the user's current cart items or specific
         cart items with atomic stock management
       parameters:
-      - description: Order creation data (cart_item_ids optional - if not provided,
-          orders all cart items)
+      - description: 'Order creation data. cart_item_ids is optional - if not provided,
+          orders all cart items. Example: {\'
         in: body
         name: request
         required: true
@@ -2582,6 +2704,256 @@ paths:
       summary: Search products
       tags:
       - Products
+  /security/alerts:
+    get:
+      consumes:
+      - application/json
+      description: Get recent security alerts with filtering options
+      parameters:
+      - default: 50
+        description: Number of alerts to return
+        in: query
+        maximum: 1000
+        minimum: 1
+        name: limit
+        type: integer
+      - description: Filter by risk level
+        enum:
+        - low
+        - medium
+        - high
+        - critical
+        in: query
+        name: risk_level
+        type: string
+      - description: Filter by resolution status
+        in: query
+        name: resolved
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Security alerts data
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get Security Alerts
+      tags:
+      - Security
+  /security/alerts/{alert_id}/resolve:
+    post:
+      consumes:
+      - application/json
+      description: Mark a security alert as resolved with optional notes
+      parameters:
+      - description: Alert ID
+        format: uuid
+        in: path
+        name: alert_id
+        required: true
+        type: string
+      - description: Resolution details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ResolveAlertRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Alert resolved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request - invalid alert ID or request body
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+        "404":
+          description: Alert not found
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Resolve Security Alert
+      tags:
+      - Security
+  /security/dashboard:
+    get:
+      consumes:
+      - application/json
+      description: Get comprehensive security dashboard with anomaly detection data
+        and real-time threat monitoring
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Security dashboard data
+          schema:
+            $ref: '#/definitions/handlers.SecurityDashboardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get Security Dashboard
+      tags:
+      - Security
+  /security/insights:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed insights and analysis about detected anomalies and
+        attack patterns
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Anomaly insights data
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get Anomaly Insights
+      tags:
+      - Security
+  /security/metrics:
+    get:
+      consumes:
+      - application/json
+      description: Get security metrics and statistics for a specified time period
+      parameters:
+      - default: 30
+        description: Number of days to include in metrics
+        in: query
+        maximum: 365
+        minimum: 1
+        name: days
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Security metrics data
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get Security Metrics
+      tags:
+      - Security
+  /security/patterns:
+    get:
+      consumes:
+      - application/json
+      description: Get information about detectable attack patterns and security threats
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Attack patterns information
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get Attack Patterns
+      tags:
+      - Security
+  /security/simulate:
+    get:
+      consumes:
+      - application/json
+      description: Simulate different types of attacks for demonstration and testing
+        purposes
+      parameters:
+      - description: Attack type
+        enum:
+        - sql_injection
+        - xss
+        - brute_force
+        - ddos
+        example: sql_injection
+        in: query
+        name: attack_type
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Attack simulation results
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request - invalid attack type
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.StandardErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Simulate Attack
+      tags:
+      - Security
   /tags:
     get:
       consumes:
@@ -2829,3 +3201,5 @@ tags:
   name: Analytics
 - description: Machine Learning services and model management
   name: ML
+- description: Security monitoring, anomaly detection, and threat analysis
+  name: Security

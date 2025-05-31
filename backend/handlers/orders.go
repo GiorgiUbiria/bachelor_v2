@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"strconv"
 
 	"bachelor_backend/database"
@@ -13,9 +14,9 @@ import (
 
 // CreateOrderRequest represents the request to create an order
 type CreateOrderRequest struct {
-	PaymentMethod   string      `json:"payment_method" validate:"required,oneof=credit_card debit_card paypal bank_transfer" example:"credit_card"`
-	ShippingAddress string      `json:"shipping_address" validate:"required,min=10,max=500" example:"123 Main St, City, State 12345"`
-	CartItemIDs     []uuid.UUID `json:"cart_item_ids,omitempty" example:"[\"123e4567-e89b-12d3-a456-426614174000\"]"` // Optional: specific cart items to order
+	PaymentMethod   string   `json:"payment_method" validate:"required,oneof=credit_card debit_card paypal bank_transfer" example:"credit_card"`
+	ShippingAddress string   `json:"shipping_address" validate:"required,min=10,max=500" example:"123 Main St, City, State 12345"`
+	CartItemIDs     []string `json:"cart_item_ids,omitempty" example:"123e4567-e89b-12d3-a456-426614174000,456e7890-e89b-12d3-a456-426614174001"` // Optional: specific cart items to order (as string UUIDs)
 }
 
 // UpdateOrderStatusRequest represents the request to update order status
@@ -128,7 +129,7 @@ func GetOrder(c *fiber.Ctx) error {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param request body CreateOrderRequest true "Order creation data (cart_item_ids optional - if not provided, orders all cart items)"
+// @Param request body CreateOrderRequest true "Order creation data. cart_item_ids is optional - if not provided, orders all cart items. Example: {\"payment_method\":\"credit_card\",\"shipping_address\":\"123 Main St, City, State 12345\",\"cart_item_ids\":[\"f29ab370-a0df-453a-a183-c444a60d1251\"]}"
 // @Success 201 {object} map[string]interface{} "Order created successfully"
 // @Failure 400 {object} map[string]interface{} "Invalid request, empty cart, or insufficient stock"
 // @Failure 401 {object} map[string]interface{} "User not authenticated"
@@ -146,15 +147,32 @@ func CreateOrder(c *fiber.Ctx) error {
 	var req CreateOrderRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid request body",
+			"success": false,
+			"error":   "Invalid request body: " + err.Error(),
 		})
 	}
 
 	// Validate request using middleware validation
 	if err := middleware.ValidateStruct(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": err.Error(),
+			"success": false,
+			"error":   err.Error(),
 		})
+	}
+
+	// Parse and validate cart item IDs if provided
+	var cartItemIDs []uuid.UUID
+	if len(req.CartItemIDs) > 0 {
+		for i, idStr := range req.CartItemIDs {
+			id, err := uuid.Parse(idStr)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"success": false,
+					"error":   fmt.Sprintf("Invalid cart item ID at index %d: %s", i, idStr),
+				})
+			}
+			cartItemIDs = append(cartItemIDs, id)
+		}
 	}
 
 	// Start transaction with proper isolation level for stock management
@@ -187,14 +205,14 @@ func CreateOrder(c *fiber.Ctx) error {
 
 	// Filter cart items based on request
 	var itemsToOrder []models.CartItem
-	if len(req.CartItemIDs) > 0 {
+	if len(cartItemIDs) > 0 {
 		// Order specific cart items
 		cartItemMap := make(map[uuid.UUID]models.CartItem)
 		for _, item := range cart.CartItems {
 			cartItemMap[item.ID] = item
 		}
 
-		for _, requestedID := range req.CartItemIDs {
+		for _, requestedID := range cartItemIDs {
 			if item, exists := cartItemMap[requestedID]; exists {
 				itemsToOrder = append(itemsToOrder, item)
 			} else {

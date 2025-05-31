@@ -10,6 +10,7 @@ import (
 	_ "bachelor_backend/docs"
 	"bachelor_backend/handlers"
 	"bachelor_backend/middleware"
+	"bachelor_backend/services"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -59,9 +60,23 @@ import (
 
 // @tag.name ML
 // @tag.description Machine Learning services and model management
+
+// @tag.name Security
+// @tag.description Security monitoring, anomaly detection, and threat analysis
 func main() {
 	// Initialize database connection
 	database.Connect()
+
+	log.Println("Database migration completed successfully")
+
+	// Initialize services
+	services.InitializeAnomalyService()
+
+	// Start background anomaly analyzer (analyze every 5 minutes)
+	services.BackgroundAnalyzerInstance.Start(5)
+
+	// Defer cleanup
+	defer services.BackgroundAnalyzerInstance.Stop()
 
 	// Create Fiber app with enhanced configuration
 	app := fiber.New(fiber.Config{
@@ -183,6 +198,12 @@ func main() {
 		return c.Next()
 	}, 30*time.Second))
 
+	// Request logging middleware for anomaly detection
+	app.Use(middleware.RequestLogging())
+
+	// Request metrics middleware
+	app.Use(middleware.RequestMetrics())
+
 	// Health check endpoint with enhanced information
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
@@ -261,6 +282,16 @@ func main() {
 	orders.Post("/", handlers.CreateOrder)
 	orders.Put("/:id/status", handlers.UpdateOrderStatus)
 	orders.Put("/:id/cancel", handlers.CancelOrder)
+
+	// Security routes - Anomaly Detection
+	security := api.Group("/security", middleware.AuthRequired())
+	security.Get("/dashboard", handlers.GetSecurityDashboard)
+	security.Get("/insights", handlers.GetAnomalyInsights)
+	security.Get("/patterns", handlers.GetAttackPatterns)
+	security.Get("/simulate", handlers.SimulateAttack)
+	security.Get("/alerts", handlers.GetSecurityAlerts)
+	security.Post("/alerts/:alert_id/resolve", handlers.ResolveSecurityAlert)
+	security.Get("/metrics", handlers.GetSecurityMetrics)
 
 	// Analytics routes
 	analytics := api.Group("/analytics", middleware.AuthRequired())

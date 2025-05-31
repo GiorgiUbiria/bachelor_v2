@@ -294,6 +294,63 @@ type ProductTag struct {
 	Tag     Tag     `json:"tag" gorm:"foreignKey:TagID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }
 
+// RequestLog represents HTTP request logs for anomaly detection
+type RequestLog struct {
+	ID           uuid.UUID  `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
+	UserID       *uuid.UUID `json:"user_id" gorm:"type:uuid;index"`
+	IPAddress    string     `json:"ip_address" gorm:"type:inet;not null;index"`
+	UserAgent    string     `json:"user_agent" gorm:"type:text"`
+	Method       string     `json:"method" gorm:"not null;index"`
+	Path         string     `json:"path" gorm:"not null;index"`
+	QueryParams  string     `json:"query_params" gorm:"type:text"`
+	StatusCode   int        `json:"status_code" gorm:"not null;index"`
+	ResponseTime float64    `json:"response_time" gorm:"not null"` // in milliseconds
+	RequestSize  int        `json:"request_size" gorm:"default:0"`
+	ResponseSize int        `json:"response_size" gorm:"default:0"`
+	SessionID    string     `json:"session_id" gorm:"index"`
+	Timestamp    time.Time  `json:"timestamp" gorm:"not null;index"`
+
+	// Relationships
+	User *User `json:"user,omitempty" gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL"`
+}
+
+// AnomalyAlert represents detected security anomalies
+type AnomalyAlert struct {
+	ID             uuid.UUID  `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
+	RequestLogID   *uuid.UUID `json:"request_log_id" gorm:"type:uuid;index"`
+	UserID         *uuid.UUID `json:"user_id" gorm:"type:uuid;index"`
+	IPAddress      string     `json:"ip_address" gorm:"type:inet;not null;index"`
+	AnomalyScore   float64    `json:"anomaly_score" gorm:"type:decimal(5,4);not null;index"`
+	RiskLevel      string     `json:"risk_level" gorm:"not null;index"` // 'low', 'medium', 'high', 'critical'
+	AnomalyReasons string     `json:"anomaly_reasons" gorm:"type:text"` // JSON array of reasons
+	IsResolved     bool       `json:"is_resolved" gorm:"default:false;index"`
+	ResolvedAt     *time.Time `json:"resolved_at" gorm:"index"`
+	ResolvedBy     *uuid.UUID `json:"resolved_by" gorm:"type:uuid;index"`
+	Notes          string     `json:"notes" gorm:"type:text"`
+	CreatedAt      time.Time  `json:"created_at" gorm:"index"`
+	UpdatedAt      time.Time  `json:"updated_at" gorm:"index"`
+
+	// Relationships
+	RequestLog     *RequestLog `json:"request_log,omitempty" gorm:"foreignKey:RequestLogID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL"`
+	User           *User       `json:"user,omitempty" gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL"`
+	ResolvedByUser *User       `json:"resolved_by_user,omitempty" gorm:"foreignKey:ResolvedBy;constraint:OnUpdate:CASCADE,OnDelete:SET NULL"`
+}
+
+// SecurityMetrics represents aggregated security metrics
+type SecurityMetrics struct {
+	ID                uuid.UUID `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
+	Date              time.Time `json:"date" gorm:"not null;uniqueIndex"`
+	TotalRequests     int       `json:"total_requests" gorm:"default:0"`
+	AnomalousRequests int       `json:"anomalous_requests" gorm:"default:0"`
+	HighRiskRequests  int       `json:"high_risk_requests" gorm:"default:0"`
+	BlockedRequests   int       `json:"blocked_requests" gorm:"default:0"`
+	UniqueIPs         int       `json:"unique_ips" gorm:"default:0"`
+	ErrorRate         float64   `json:"error_rate" gorm:"type:decimal(5,4);default:0"`
+	AvgResponseTime   float64   `json:"avg_response_time" gorm:"default:0"`
+	CreatedAt         time.Time `json:"created_at" gorm:"index"`
+	UpdatedAt         time.Time `json:"updated_at" gorm:"index"`
+}
+
 // BeforeCreate hook for User model
 func (u *User) BeforeCreate(tx *gorm.DB) error {
 	if u.ID == uuid.Nil {

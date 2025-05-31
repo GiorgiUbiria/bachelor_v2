@@ -61,16 +61,21 @@ services:
     networks:
       - bachelor_network
 
-  # React Frontend with Nginx
-  frontend:
-    build: 
-      context: ./frontend
-      args:
-        - VITE_API_URL=http://localhost:8081
-        - VITE_ML_API_URL=http://localhost:8000
-    container_name: bachelor_frontend
+  # Jupyter Notebook for Presentation
+  jupyter:
+    image: jupyter/scipy-notebook:latest
+    container_name: bachelor_jupyter
     ports:
-      - "3000:80"
+      - "8888:8888"
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - JUPYTER_TOKEN=presentation2024
+    volumes:
+      - ./demo:/home/jovyan/demo
+      - ./ml_service:/home/jovyan/ml_service
+      - ./backend:/home/jovyan/backend
+      - ./README.md:/home/jovyan/README.md
+    command: start-notebook.sh --NotebookApp.token='presentation2024' --NotebookApp.password='' --NotebookApp.disable_check_xsrf=True
     depends_on:
       - backend
       - ml_service
