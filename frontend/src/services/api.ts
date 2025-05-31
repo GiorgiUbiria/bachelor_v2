@@ -53,72 +53,142 @@ export const apiService = {
 
   auth: {
     login: (credentials: { email: string; password: string }) =>
-      api.post('/api/v1/auth/login', credentials),
+      api.post('/auth/login', credentials),
     register: (userData: { name: string; email: string; password: string }) =>
-      api.post('/api/v1/auth/register', userData),
-    logout: () => api.post('/api/v1/auth/logout'),
-    profile: () => api.get('/api/v1/auth/profile'),
-    updateProfile: (profileData: any) => api.put('/api/v1/auth/profile', profileData),
-    me: () => api.get('/api/v1/auth/profile'),
+      api.post('/auth/register', userData),
+    profile: () => api.get('/auth/profile'),
+    updateProfile: (profileData: { name?: string; phone?: string }) => 
+      api.put('/auth/profile', profileData),
   },
 
   products: {
     getAll: (params?: { page?: number; limit?: number; category?: string; search?: string }) =>
-      api.get('/api/v1/products', { params }),
-    getById: (id: string) => api.get(`/api/v1/products/${id}`),
-    create: (productData: any) => api.post('/api/v1/products', productData),
-    update: (id: string, productData: any) => api.put(`/api/v1/products/${id}`, productData),
-    delete: (id: string) => api.delete(`/api/v1/products/${id}`),
-    getCategories: () => api.get('/api/v1/products/categories'),
+      api.get('/products', { params }),
+    getById: (id: string) => api.get(`/products/${id}`),
+    create: (productData: { 
+      name: string; 
+      description: string; 
+      price: number; 
+      stock: number; 
+      category: string; 
+      image_url?: string 
+    }) => api.post('/products', productData),
+    update: (id: string, productData: { 
+      name?: string; 
+      description?: string; 
+      price?: number; 
+      stock?: number; 
+      category?: string; 
+      image_url?: string 
+    }) => api.put(`/products/${id}`, productData),
+    delete: (id: string) => api.delete(`/products/${id}`),
     search: (params?: { q?: string; category?: string; page?: number; limit?: number }) =>
-      api.get('/api/v1/products/search', { params }),
+      api.get('/products/search', { params }),
     getRecommendations: (params?: { limit?: number }) =>
-      api.get('/api/v1/products/recommendations', { params }),
-    getByCategory: (category: string, params?: { page?: number; limit?: number }) =>
-      api.get(`/api/v1/products/category/${category}`, { params }),
+      api.get('/products/recommendations', { params }),
   },
 
   cart: {
-    get: () => api.get('/api/v1/cart'),
+    get: () => api.get('/cart'),
     addItem: (productId: string, quantity: number) =>
-      api.post('/api/v1/cart/add', { product_id: productId, quantity }),
+      api.post('/cart/add', { product_id: productId, quantity }),
     updateItem: (itemId: string, quantity: number) =>
-      api.put(`/api/v1/cart/item/${itemId}`, { quantity }),
-    removeItem: (itemId: string) => api.delete(`/api/v1/cart/item/${itemId}`),
-    clear: () => api.delete('/api/v1/cart/clear'),
+      api.put(`/cart/item/${itemId}`, { quantity }),
+    removeItem: (itemId: string) => api.delete(`/cart/item/${itemId}`),
+    clear: () => api.delete('/cart/clear'),
   },
 
   orders: {
     getAll: (params?: { page?: number; limit?: number; status?: string }) =>
-      api.get('/api/v1/orders', { params }),
-    getById: (id: string) => api.get(`/api/v1/orders/${id}`),
-    create: (orderData: { payment_method: string; shipping_address: string; notes?: string }) =>
-      api.post('/api/v1/orders', orderData),
-    updateStatus: (id: string, status: string) =>
-      api.put(`/api/v1/orders/${id}/status`, { status }),
-    cancel: (id: string) => api.put(`/api/v1/orders/${id}/cancel`),
-    getStats: () => api.get('/api/v1/orders/stats'),
+      api.get('/orders', { params }),
+    getById: (id: string) => api.get(`/orders/${id}`),
+    create: (orderData: { 
+      cart_item_ids?: string[]; 
+      payment_method: string; 
+      shipping_address: string 
+    }) => api.post('/orders', orderData),
+    updateStatus: (id: string, status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled') =>
+      api.put(`/orders/${id}/status`, { status }),
+    cancel: (id: string) => api.put(`/orders/${id}/cancel`),
+    getStats: () => api.get('/orders/stats'),
+  },
+
+  comments: {
+    getByProduct: (productId: string) => api.get(`/comments/${productId}`),
+    add: (commentData: { product_id: string; content: string; rating: number }) =>
+      api.post('/comments', commentData),
+    update: (commentId: string, commentData: { content?: string; rating?: number }) =>
+      api.put(`/comments/${commentId}`, commentData),
+    delete: (commentId: string) => api.delete(`/comments/${commentId}`),
+  },
+
+  discounts: {
+    getActive: () => api.get('/discounts/active'),
+    create: (discountData: {
+      discount_type: string;
+      discount_value: number;
+      start_date: string;
+      end_date: string;
+      product_id?: string;
+      category?: string;
+      min_order_amount?: number;
+      max_discount_amount?: number;
+      usage_limit?: number;
+    }) => api.post('/discounts', discountData),
+  },
+
+  favorites: {
+    get: () => api.get('/favorites'),
+    add: (productId: string) => api.post('/favorites', { product_id: productId }),
+    remove: (productId: string) => api.delete(`/favorites/${productId}`),
+  },
+
+  tags: {
+    getAll: () => api.get('/tags'),
+    create: (tagData: { name: string; description?: string; color?: string }) =>
+      api.post('/tags', tagData),
+    getByProduct: (productId: string) => api.get(`/tags/products/${productId}`),
+    addToProduct: (productId: string, tagId: string) =>
+      api.post('/tags/products', { product_id: productId, tag_id: tagId }),
+  },
+
+  upvotes: {
+    add: (productId: string) => api.post('/upvotes', { product_id: productId }),
+    getByProduct: (productId: string) => api.get(`/upvotes/${productId}`),
+    remove: (productId: string) => api.delete(`/upvotes/${productId}`),
   },
 
   analytics: {
-    dashboard: () => api.get('/api/v1/analytics/dashboard'),
-    user: (params?: { period?: string }) => api.get('/api/v1/analytics/user', { params }),
-    users: (params?: { period?: string }) => api.get('/api/v1/analytics/user', { params }), // Alias
-    products: (params?: { period?: string }) => api.get('/api/v1/analytics/products', { params }),
-    trends: () => api.get('/api/v1/analytics/trends'),
-    search: () => api.get('/api/v1/analytics/search'),
-    recommendationMetrics: () => api.get('/api/v1/analytics/recommendations/metrics'),
+    dashboard: () => api.get('/analytics/dashboard'),
+    user: (params?: { period?: string }) => api.get('/analytics/user', { params }),
+    products: (params?: { period?: string }) => api.get('/analytics/products', { params }),
+    trends: () => api.get('/analytics/trends'),
+    search: () => api.get('/analytics/search'),
+    recommendationMetrics: () => api.get('/analytics/recommendations/metrics'),
     export: (params?: { format?: string; period?: string }) =>
-      api.get('/api/v1/analytics/export', { params }),
+      api.get('/analytics/export', { params }),
   },
 
   ml: {
-    status: () => api.get('/api/v1/ml/status'),
-    train: () => api.post('/api/v1/ml/train'),
-  },
+    initializeServices: () => api.post('/ml/initialize-services'),
+    
+    autoTagging: {
+      autoTag: (productData: any) => api.post('/ml/auto-tagging/auto-tag', productData),
+      getInsights: () => api.get('/ml/auto-tagging/insights'),
+      suggest: (productId: string) => api.get(`/ml/auto-tagging/suggest/${productId}`),
+    },
 
-  chat: {
-    message: (message: string) => api.post('/api/v1/chat/message', { message }),
+    sentiment: {
+      analyzeProduct: (productId: string) => api.get(`/ml/sentiment/product/${productId}`),
+      analyzeCategory: (category: string) => api.get(`/ml/sentiment/category/${category}`),
+      getInsights: () => api.get('/ml/sentiment/insights'),
+    },
+
+    smartDiscounts: {
+      getInsights: () => api.get('/ml/smart-discounts/insights'),
+      suggestForProduct: (productId: string) => api.get(`/ml/smart-discounts/suggest/product/${productId}`),
+      suggestForCategory: (category: string) => api.get(`/ml/smart-discounts/suggest/category/${category}`),
+    },
   },
 
   mlService: {
@@ -177,13 +247,6 @@ export const apiService = {
         mlApi.get(`/forecast/demand/${productId}`, { params: { days_ahead: daysAhead } }),
       retrain: () => mlApi.post('/trends/retrain'),
       status: () => mlApi.get('/trends/status'),
-    },
-
-    chatbot: {
-      message: (data: { message: string; session_id?: string; user_id?: string }) =>
-        mlApi.post('/message', data),
-      intents: () => mlApi.get('/intents'),
-      train: () => mlApi.post('/train'),
     },
   },
 }

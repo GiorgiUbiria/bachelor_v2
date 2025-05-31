@@ -1,5 +1,45 @@
 basePath: /api/v1
 definitions:
+  handlers.AddCommentRequest:
+    properties:
+      content:
+        example: Great product!
+        maxLength: 1000
+        minLength: 1
+        type: string
+      product_id:
+        example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+      rating:
+        example: 5
+        maximum: 5
+        minimum: 1
+        type: integer
+    required:
+    - content
+    - product_id
+    - rating
+    type: object
+  handlers.AddFavoriteRequest:
+    properties:
+      product_id:
+        example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+    required:
+    - product_id
+    type: object
+  handlers.AddProductTagRequest:
+    properties:
+      product_id:
+        example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+      tag_id:
+        example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+    required:
+    - product_id
+    - tag_id
+    type: object
   handlers.AddToCartRequest:
     properties:
       product_id:
@@ -14,6 +54,14 @@ definitions:
     - product_id
     - quantity
     type: object
+  handlers.AddUpvoteRequest:
+    properties:
+      product_id:
+        example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+    required:
+    - product_id
+    type: object
   handlers.AuthResponse:
     properties:
       token:
@@ -22,8 +70,59 @@ definitions:
       user:
         $ref: '#/definitions/models.User'
     type: object
+  handlers.CreateDiscountRequest:
+    properties:
+      category:
+        example: Electronics
+        maxLength: 100
+        minLength: 1
+        type: string
+      discount_type:
+        enum:
+        - percentage
+        - fixed_amount
+        example: percentage
+        type: string
+      discount_value:
+        example: 20
+        minimum: 0
+        type: number
+      end_date:
+        example: "2024-12-31T23:59:59Z"
+        type: string
+      max_discount_amount:
+        example: 50
+        minimum: 0
+        type: number
+      min_order_amount:
+        example: 100
+        minimum: 0
+        type: number
+      product_id:
+        example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+      start_date:
+        example: "2024-01-01T00:00:00Z"
+        type: string
+      usage_limit:
+        example: 100
+        minimum: 0
+        type: integer
+    required:
+    - discount_type
+    - discount_value
+    - end_date
+    - start_date
+    type: object
   handlers.CreateOrderRequest:
     properties:
+      cart_item_ids:
+        description: 'Optional: specific cart items to order'
+        example:
+        - '["123e4567-e89b-12d3-a456-426614174000"]'
+        items:
+          type: string
+        type: array
       payment_method:
         enum:
         - credit_card
@@ -75,6 +174,23 @@ definitions:
     - name
     - price
     - stock
+    type: object
+  handlers.CreateTagRequest:
+    properties:
+      color:
+        example: '#FF5733'
+        type: string
+      description:
+        example: Electronic devices and gadgets
+        maxLength: 255
+        type: string
+      name:
+        example: Electronics
+        maxLength: 50
+        minLength: 1
+        type: string
+    required:
+    - name
     type: object
   handlers.LoginRequest:
     properties:
@@ -131,6 +247,19 @@ definitions:
     required:
     - quantity
     type: object
+  handlers.UpdateCommentRequest:
+    properties:
+      content:
+        example: Updated comment
+        maxLength: 1000
+        minLength: 1
+        type: string
+      rating:
+        example: 4
+        maximum: 5
+        minimum: 1
+        type: integer
+    type: object
   handlers.UpdateOrderStatusRequest:
     properties:
       status:
@@ -186,6 +315,90 @@ definitions:
         maxLength: 20
         type: string
     type: object
+  handlers.UserProfileResponse:
+    properties:
+      comments:
+        items:
+          $ref: '#/definitions/models.Comment'
+        type: array
+      created_at:
+        type: string
+      email:
+        type: string
+      favorites:
+        items:
+          $ref: '#/definitions/models.Favorite'
+        type: array
+      id:
+        type: string
+      name:
+        type: string
+      orders:
+        description: Relationships
+        items:
+          $ref: '#/definitions/models.Order'
+        type: array
+      recent_activity:
+        $ref: '#/definitions/handlers.UserRecentActivity'
+      recommendations:
+        items:
+          $ref: '#/definitions/models.Recommendation'
+        type: array
+      shopping_cart:
+        $ref: '#/definitions/models.ShoppingCart'
+      statistics:
+        $ref: '#/definitions/handlers.UserProfileStatistics'
+      updated_at:
+        type: string
+      upvotes:
+        items:
+          $ref: '#/definitions/models.Upvote'
+        type: array
+      user_interactions:
+        items:
+          $ref: '#/definitions/models.UserInteraction'
+        type: array
+    type: object
+  handlers.UserProfileStatistics:
+    properties:
+      average_order_value:
+        type: number
+      cart_items_count:
+        type: integer
+      cart_total_value:
+        type: number
+      favorite_category:
+        type: string
+      recommendations_clicked:
+        type: integer
+      recommendations_received:
+        type: integer
+      total_interactions:
+        type: integer
+      total_orders:
+        type: integer
+      total_spent:
+        type: number
+    type: object
+  handlers.UserRecentActivity:
+    properties:
+      recent_interactions:
+        items:
+          $ref: '#/definitions/models.UserInteraction'
+        type: array
+      recent_orders:
+        items:
+          $ref: '#/definitions/models.Order'
+        type: array
+      recent_searches:
+        items:
+          $ref: '#/definitions/models.SearchQuery'
+        type: array
+      recent_views:
+        items:
+          $ref: '#/definitions/models.ProductView'
+        type: array
+    type: object
   models.CartItem:
     properties:
       cart:
@@ -205,6 +418,89 @@ definitions:
       quantity:
         type: integer
       updated_at:
+        type: string
+    type: object
+  models.Comment:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      product:
+        $ref: '#/definitions/models.Product'
+      product_id:
+        type: string
+      rating:
+        description: 1-5 star rating
+        type: integer
+      updated_at:
+        type: string
+      user:
+        allOf:
+        - $ref: '#/definitions/models.User'
+        description: Relationships
+      user_id:
+        type: string
+    type: object
+  models.Discount:
+    properties:
+      category:
+        description: Nullable for product-specific discounts
+        type: string
+      created_at:
+        type: string
+      discount_type:
+        description: '''percentage'', ''fixed_amount'''
+        type: string
+      discount_value:
+        description: Percentage (0-100) or fixed amount
+        type: number
+      end_date:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      max_discount_amount:
+        description: Maximum discount amount (for percentage)
+        type: number
+      min_order_amount:
+        description: Minimum order amount to apply discount
+        type: number
+      product:
+        allOf:
+        - $ref: '#/definitions/models.Product'
+        description: Relationships
+      product_id:
+        description: Nullable for category-wide discounts
+        type: string
+      start_date:
+        type: string
+      updated_at:
+        type: string
+      usage_count:
+        type: integer
+      usage_limit:
+        description: 0 = unlimited
+        type: integer
+    type: object
+  models.Favorite:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      product:
+        $ref: '#/definitions/models.Product'
+      product_id:
+        type: string
+      user:
+        allOf:
+        - $ref: '#/definitions/models.User'
+        description: Relationships
+      user_id:
         type: string
     type: object
   models.Order:
@@ -259,10 +555,22 @@ definitions:
         type: array
       category:
         type: string
+      comments:
+        items:
+          $ref: '#/definitions/models.Comment'
+        type: array
       created_at:
         type: string
       description:
         type: string
+      discounts:
+        items:
+          $ref: '#/definitions/models.Discount'
+        type: array
+      favorites:
+        items:
+          $ref: '#/definitions/models.Favorite'
+        type: array
       id:
         type: string
       image_url:
@@ -286,8 +594,16 @@ definitions:
         type: array
       stock:
         type: integer
+      tags:
+        items:
+          $ref: '#/definitions/models.Tag'
+        type: array
       updated_at:
         type: string
+      upvotes:
+        items:
+          $ref: '#/definitions/models.Upvote'
+        type: array
       user_interactions:
         items:
           $ref: '#/definitions/models.UserInteraction'
@@ -335,6 +651,26 @@ definitions:
       user_id:
         type: string
     type: object
+  models.SearchQuery:
+    properties:
+      created_at:
+        description: Changed from Timestamp to CreatedAt for consistency
+        type: string
+      id:
+        type: string
+      query:
+        type: string
+      results_clicked:
+        type: integer
+      results_count:
+        type: integer
+      user:
+        allOf:
+        - $ref: '#/definitions/models.User'
+        description: Relationships
+      user_id:
+        type: string
+    type: object
   models.ShoppingCart:
     properties:
       cart_items:
@@ -354,12 +690,56 @@ definitions:
       user_id:
         type: string
     type: object
+  models.Tag:
+    properties:
+      color:
+        description: Hex color code
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      products:
+        description: Relationships
+        items:
+          $ref: '#/definitions/models.Product'
+        type: array
+    type: object
+  models.Upvote:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      product:
+        $ref: '#/definitions/models.Product'
+      product_id:
+        type: string
+      user:
+        allOf:
+        - $ref: '#/definitions/models.User'
+        description: Relationships
+      user_id:
+        type: string
+    type: object
   models.User:
     properties:
+      comments:
+        items:
+          $ref: '#/definitions/models.Comment'
+        type: array
       created_at:
         type: string
       email:
         type: string
+      favorites:
+        items:
+          $ref: '#/definitions/models.Favorite'
+        type: array
       id:
         type: string
       name:
@@ -377,6 +757,10 @@ definitions:
         $ref: '#/definitions/models.ShoppingCart'
       updated_at:
         type: string
+      upvotes:
+        items:
+          $ref: '#/definitions/models.Upvote'
+        type: array
       user_interactions:
         items:
           $ref: '#/definitions/models.UserInteraction'
@@ -405,7 +789,7 @@ definitions:
       user_id:
         type: string
     type: object
-host: localhost:8080
+host: localhost:8081
 info:
   contact:
     email: support@bachelor-ecommerce.com
@@ -509,11 +893,18 @@ paths:
           schema:
             additionalProperties: true
             type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
         "500":
           description: Internal server error
           schema:
             additionalProperties: true
             type: object
+      security:
+      - BearerAuth: []
       summary: Get product analytics
       tags:
       - Analytics
@@ -521,7 +912,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get recommendation system performance metrics (placeholder endpoint)
+      description: Get recommendation system performance metrics
       produces:
       - application/json
       responses:
@@ -535,6 +926,11 @@ paths:
           schema:
             additionalProperties: true
             type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
       security:
       - BearerAuth: []
       summary: Get recommendation metrics
@@ -544,8 +940,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get search analytics and query performance metrics (placeholder
-        endpoint)
+      description: Get search analytics and query performance metrics
       parameters:
       - default: 30
         description: Number of days to analyze
@@ -560,6 +955,18 @@ paths:
           schema:
             additionalProperties: true
             type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
       summary: Get search analytics
       tags:
       - Analytics
@@ -567,7 +974,13 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get ML-powered trend analysis and predictions (placeholder endpoint)
+      description: Get ML-powered trend analysis and predictions
+      parameters:
+      - default: 30
+        description: Number of days to analyze
+        in: query
+        name: days
+        type: integer
       produces:
       - application/json
       responses:
@@ -576,6 +989,18 @@ paths:
           schema:
             additionalProperties: true
             type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
       summary: Get ML trends
       tags:
       - Analytics
@@ -652,14 +1077,15 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get the authenticated user's profile information
+      description: Get the authenticated user's comprehensive profile information
+        including statistics and recent activity
       produces:
       - application/json
       responses:
         "200":
           description: User profile retrieved successfully
           schema:
-            $ref: '#/definitions/models.User'
+            $ref: '#/definitions/handlers.UserProfileResponse'
         "401":
           description: User not authenticated
           schema:
@@ -945,6 +1371,679 @@ paths:
       summary: Update cart item quantity
       tags:
       - Cart
+  /comments:
+    post:
+      consumes:
+      - application/json
+      description: Add a comment and rating to a product
+      parameters:
+      - description: Comment to add
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.AddCommentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Comment added successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Product not found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Add product comment
+      tags:
+      - Comments
+  /comments/{comment_id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a user's own comment
+      parameters:
+      - description: Comment ID (UUID)
+        in: path
+        name: comment_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Comment deleted successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid comment ID
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Comment not found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete comment
+      tags:
+      - Comments
+    put:
+      consumes:
+      - application/json
+      description: Update a user's own comment
+      parameters:
+      - description: Comment ID (UUID)
+        in: path
+        name: comment_id
+        required: true
+        type: string
+      - description: Updated comment data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateCommentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Comment updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Not authorized to update this comment
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Comment not found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update comment
+      tags:
+      - Comments
+  /comments/{product_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get paginated list of comments for a product
+      parameters:
+      - description: Product ID (UUID)
+        in: path
+        name: product_id
+        required: true
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Comments retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid product ID
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get product comments
+      tags:
+      - Comments
+  /discounts:
+    post:
+      consumes:
+      - application/json
+      description: Create a new product or category discount (admin only)
+      parameters:
+      - description: Discount data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateDiscountRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Discount created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create discount
+      tags:
+      - Discounts
+  /discounts/active:
+    get:
+      consumes:
+      - application/json
+      description: Get list of currently active discounts
+      parameters:
+      - description: Filter by product ID
+        in: query
+        name: product_id
+        type: string
+      - description: Filter by category
+        in: query
+        name: category
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Active discounts retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get active discounts
+      tags:
+      - Discounts
+  /favorites:
+    get:
+      consumes:
+      - application/json
+      description: Get paginated list of user's favorite products
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Favorites retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user favorites
+      tags:
+      - Favorites
+    post:
+      consumes:
+      - application/json
+      description: Add a product to the user's favorite list
+      parameters:
+      - description: Product to add to favorites
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.AddFavoriteRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Product added to favorites successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request or product already in favorites
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Product not found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Add product to favorites
+      tags:
+      - Favorites
+  /favorites/{product_id}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a product from the user's favorite list
+      parameters:
+      - description: Product ID (UUID)
+        in: path
+        name: product_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product removed from favorites successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid product ID
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Favorite not found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove product from favorites
+      tags:
+      - Favorites
+  /ml/auto-tagging/auto-tag:
+    post:
+      consumes:
+      - application/json
+      description: Automatically assign tags to products that don't have sufficient
+        tags
+      parameters:
+      - default: 50
+        description: Maximum number of products to tag
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Products auto-tagged successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Auto-tag products
+      tags:
+      - ML
+  /ml/auto-tagging/insights:
+    get:
+      consumes:
+      - application/json
+      description: Get insights about the auto-tagging system performance and coverage
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tagging insights retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get tagging insights
+      tags:
+      - ML
+  /ml/auto-tagging/suggest/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get AI-suggested tags for a specific product based on content and
+        user behavior
+      parameters:
+      - description: Product ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product tag suggestions retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid product ID
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Suggest product tags
+      tags:
+      - ML
+  /ml/initialize-services:
+    post:
+      consumes:
+      - application/json
+      description: Initialize or retrain all new ML services (sentiment, auto-tagging,
+        smart discounts)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ML services initialized successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Initialize ML services
+      tags:
+      - ML
+  /ml/sentiment/category/{category}:
+    get:
+      consumes:
+      - application/json
+      description: Get sentiment analysis for a product category based on user comments
+      parameters:
+      - description: Product Category
+        in: path
+        name: category
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Category sentiment analysis retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Analyze category sentiment
+      tags:
+      - ML
+  /ml/sentiment/insights:
+    get:
+      consumes:
+      - application/json
+      description: Get actionable sentiment insights across all products and categories
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sentiment insights retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get sentiment insights
+      tags:
+      - ML
+  /ml/sentiment/product/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get sentiment analysis for a specific product based on user comments
+      parameters:
+      - description: Product ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product sentiment analysis retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid product ID
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Analyze product sentiment
+      tags:
+      - ML
+  /ml/smart-discounts/insights:
+    get:
+      consumes:
+      - application/json
+      description: Get insights about discount opportunities and performance across
+        the platform
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Discount insights retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get discount insights
+      tags:
+      - ML
+  /ml/smart-discounts/suggest/category/{category}:
+    get:
+      consumes:
+      - application/json
+      description: Get AI-suggested discounts for all products in a specific category
+      parameters:
+      - description: Product Category
+        in: path
+        name: category
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Category discount suggestions retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Suggest category discounts
+      tags:
+      - ML
+  /ml/smart-discounts/suggest/product/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get AI-suggested optimal discount for a specific product based
+        on performance metrics
+      parameters:
+      - description: Product ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product discount suggestion retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid product ID
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Suggest product discount
+      tags:
+      - ML
   /orders:
     get:
       consumes:
@@ -987,10 +2086,11 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a new order from the user's current cart items with atomic
-        stock management
+      description: Create a new order from the user's current cart items or specific
+        cart items with atomic stock management
       parameters:
-      - description: Order creation data
+      - description: Order creation data (cart_item_ids optional - if not provided,
+          orders all cart items)
         in: body
         name: request
         required: true
@@ -1396,7 +2496,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get personalized product recommendations using ML algorithms
+      description: Get personalized product recommendations using ML algorithms with
+        reasoning
       parameters:
       - default: 10
         description: Number of recommendations
@@ -1430,7 +2531,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: Search products using advanced ML-powered search with TF-IDF vectorization
+      description: Search products using enhanced search with relevance scoring and
+        intelligent filtering
       parameters:
       - description: Search query
         in: query
@@ -1447,6 +2549,18 @@ paths:
         in: query
         name: limit
         type: integer
+      - description: Filter by category
+        in: query
+        name: category
+        type: string
+      - description: Minimum price filter
+        in: query
+        name: min_price
+        type: number
+      - description: Maximum price filter
+        in: query
+        name: max_price
+        type: number
       produces:
       - application/json
       responses:
@@ -1468,6 +2582,230 @@ paths:
       summary: Search products
       tags:
       - Products
+  /tags:
+    get:
+      consumes:
+      - application/json
+      description: Get list of all available product tags
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tags retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all tags
+      tags:
+      - Tags
+    post:
+      consumes:
+      - application/json
+      description: Create a new product tag (admin only)
+      parameters:
+      - description: Tag data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateTagRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Tag created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request or tag already exists
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create tag
+      tags:
+      - Tags
+  /tags/products:
+    post:
+      consumes:
+      - application/json
+      description: Add a tag to a product (admin only)
+      parameters:
+      - description: Product and tag IDs
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.AddProductTagRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Tag added to product successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request or tag already added
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Product or tag not found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Add tag to product
+      tags:
+      - Tags
+  /tags/products/{product_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get all tags associated with a product
+      parameters:
+      - description: Product ID (UUID)
+        in: path
+        name: product_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product tags retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid product ID
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get product tags
+      tags:
+      - Tags
+  /upvotes:
+    post:
+      consumes:
+      - application/json
+      description: Add an upvote to a product
+      parameters:
+      - description: Product to upvote
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.AddUpvoteRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Product upvoted successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request or already upvoted
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Product not found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Upvote product
+      tags:
+      - Upvotes
+  /upvotes/{product_id}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove an upvote from a product
+      parameters:
+      - description: Product ID (UUID)
+        in: path
+        name: product_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Upvote removed successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid product ID
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Upvote not found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove upvote
+      tags:
+      - Upvotes
+    get:
+      consumes:
+      - application/json
+      description: Get upvote count and user's upvote status for a product
+      parameters:
+      - description: Product ID (UUID)
+        in: path
+        name: product_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Upvotes retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid product ID
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get product upvotes
+      tags:
+      - Upvotes
 schemes:
 - http
 - https

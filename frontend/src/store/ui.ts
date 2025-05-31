@@ -34,20 +34,17 @@ type UIStore = UIState & UIActions
 export const useUIStore = create<UIStore>()(
   persist(
     immer((set) => ({
-      // Initial state
       theme: 'system',
       toasts: [],
       isLoading: false,
       loadingMessage: undefined,
       sidebarOpen: false,
 
-      // Actions
       setTheme: (theme: Theme) => {
         set((state) => {
           state.theme = theme
         })
         
-        // Apply theme to document
         const root = document.documentElement
         if (theme === 'dark') {
           root.classList.add('dark')
@@ -70,7 +67,6 @@ export const useUIStore = create<UIStore>()(
           state.toasts.push({ ...toast, id })
         })
 
-        // Auto remove toast after duration
         const duration = toast.duration || 5000
         setTimeout(() => {
           set((state) => {

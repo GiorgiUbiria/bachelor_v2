@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	"bachelor_backend/database"
 	"bachelor_backend/middleware"
@@ -214,15 +216,18 @@ func GetCategories(c *fiber.Ctx) error {
 	})
 }
 
-// SearchProducts performs enhanced search with ML integration
+// SearchProducts performs enhanced search with relevance scoring
 // @Summary Search products
-// @Description Search products using advanced ML-powered search with TF-IDF vectorization
+// @Description Search products using enhanced search with relevance scoring and intelligent filtering
 // @Tags Products
 // @Accept json
 // @Produce json
 // @Param q query string true "Search query"
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(20)
+// @Param category query string false "Filter by category"
+// @Param min_price query number false "Minimum price filter"
+// @Param max_price query number false "Maximum price filter"
 // @Success 200 {object} map[string]interface{} "Search results retrieved successfully"
 // @Failure 400 {object} map[string]interface{} "Search query is required"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
@@ -239,38 +244,30 @@ func SearchProducts(c *fiber.Ctx) error {
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
 	offset := (page - 1) * limit
 
-	// Basic search implementation
-	searchTerm := "%" + strings.ToLower(query) + "%"
+	// Additional filters
+	category := c.Query("category")
+	minPrice, _ := strconv.ParseFloat(c.Query("min_price", "0"), 64)
+	maxPrice, _ := strconv.ParseFloat(c.Query("max_price", "999999"), 64)
 
-	var products []models.Product
-	var total int64
-
-	// Count total results first
-	if err := database.DB.Model(&models.Product{}).
-		Where("LOWER(name) LIKE ? OR LOWER(description) LIKE ? OR LOWER(category) LIKE ?",
-			searchTerm, searchTerm, searchTerm).
-		Count(&total).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to count search results",
-		})
-	}
-
-	// Get search results
-	if err := database.DB.Where("LOWER(name) LIKE ? OR LOWER(description) LIKE ? OR LOWER(category) LIKE ?",
-		searchTerm, searchTerm, searchTerm).
-		Offset(offset).Limit(limit).
-		Find(&products).Error; err != nil {
+	// Enhanced search with relevance scoring
+	searchResults, total, err := performEnhancedSearch(query, category, minPrice, maxPrice, offset, limit)
+	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to search products",
 		})
 	}
 
-	// Track search query
-	go trackSearchQuery(c, query)
+	// Track search query with results count
+	go trackSearchQueryWithResults(c, query, int(total))
 
 	return c.JSON(fiber.Map{
-		"products": products,
+		"products": searchResults,
 		"query":    query,
+		"filters": fiber.Map{
+			"category":  category,
+			"min_price": minPrice,
+			"max_price": maxPrice,
+		},
 		"pagination": fiber.Map{
 			"page":        page,
 			"limit":       limit,
@@ -280,9 +277,163 @@ func SearchProducts(c *fiber.Ctx) error {
 	})
 }
 
+// Enhanced search function with relevance scoring
+func performEnhancedSearch(query, category string, minPrice, maxPrice float64, offset, limit int) ([]ProductSearchResult, int64, error) {
+	// Normalize and prepare search terms
+	normalizedQuery := strings.ToLower(strings.TrimSpace(query))
+	searchTerms := strings.Fields(normalizedQuery)
+
+	if len(searchTerms) == 0 {
+		return nil, 0, fmt.Errorf("invalid search query")
+	}
+
+	// Build the search query with relevance scoring
+	var searchResults []ProductSearchResult
+	var total int64
+
+	// Create a complex query that scores relevance
+	baseQuery := database.DB.Model(&models.Product{}).
+		Select(`
+			products.*,
+			(
+				CASE 
+					WHEN LOWER(name) = ? THEN 100
+					WHEN LOWER(name) LIKE ? THEN 80
+					WHEN LOWER(name) LIKE ? THEN 60
+					ELSE 0
+				END +
+				CASE 
+					WHEN LOWER(description) LIKE ? THEN 40
+					WHEN LOWER(description) LIKE ? THEN 20
+					ELSE 0
+				END +
+				CASE 
+					WHEN LOWER(category) = ? THEN 50
+					WHEN LOWER(category) LIKE ? THEN 30
+					ELSE 0
+				END
+			) as relevance_score
+		`,
+			normalizedQuery,                        // Exact name match
+			normalizedQuery+"%",                    // Name starts with query
+			"%"+normalizedQuery+"%",                // Name contains query
+			"%"+normalizedQuery+"%",                // Description contains query
+			"%"+strings.Join(searchTerms, "%")+"%", // Description contains all terms
+			normalizedQuery,                        // Exact category match
+			"%"+normalizedQuery+"%",                // Category contains query
+		)
+
+	// Apply filters
+	whereConditions := []string{}
+	whereArgs := []interface{}{}
+
+	// Search condition - must match at least one field
+	searchCondition := `(
+		LOWER(name) LIKE ? OR 
+		LOWER(description) LIKE ? OR 
+		LOWER(category) LIKE ?
+	)`
+	whereConditions = append(whereConditions, searchCondition)
+	whereArgs = append(whereArgs, "%"+normalizedQuery+"%", "%"+normalizedQuery+"%", "%"+normalizedQuery+"%")
+
+	// Additional term matching for better relevance
+	for _, term := range searchTerms {
+		if len(term) > 2 { // Only consider terms longer than 2 characters
+			termCondition := `(
+				LOWER(name) LIKE ? OR 
+				LOWER(description) LIKE ? OR 
+				LOWER(category) LIKE ?
+			)`
+			whereConditions = append(whereConditions, termCondition)
+			whereArgs = append(whereArgs, "%"+term+"%", "%"+term+"%", "%"+term+"%")
+		}
+	}
+
+	// Price filters
+	if minPrice > 0 {
+		whereConditions = append(whereConditions, "price >= ?")
+		whereArgs = append(whereArgs, minPrice)
+	}
+	if maxPrice < 999999 {
+		whereConditions = append(whereConditions, "price <= ?")
+		whereArgs = append(whereArgs, maxPrice)
+	}
+
+	// Category filter
+	if category != "" {
+		whereConditions = append(whereConditions, "LOWER(category) = ?")
+		whereArgs = append(whereArgs, strings.ToLower(category))
+	}
+
+	// Stock filter - only show available products
+	whereConditions = append(whereConditions, "stock > 0")
+
+	// Combine all conditions
+	finalQuery := baseQuery.Where(strings.Join(whereConditions, " AND "), whereArgs...)
+
+	// Create a separate query for counting (without the SELECT with calculated fields)
+	countQuery := database.DB.Model(&models.Product{}).Where(strings.Join(whereConditions, " AND "), whereArgs...)
+
+	// Count total results
+	if err := countQuery.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Get results with relevance scoring and ordering
+	if err := finalQuery.
+		Order("relevance_score DESC, name ASC").
+		Offset(offset).
+		Limit(limit).
+		Scan(&searchResults).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Filter out results with zero relevance score in application logic
+	filteredResults := make([]ProductSearchResult, 0, len(searchResults))
+	for _, result := range searchResults {
+		if result.RelevanceScore > 0 {
+			filteredResults = append(filteredResults, result)
+		}
+	}
+
+	return filteredResults, total, nil
+}
+
+// ProductSearchResult represents a search result with relevance score
+type ProductSearchResult struct {
+	models.Product
+	RelevanceScore int `json:"relevance_score"`
+}
+
+// Enhanced search query tracking
+func trackSearchQueryWithResults(c *fiber.Ctx, query string, resultsCount int) {
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("Error in trackSearchQueryWithResults: %v", r)
+			}
+		}()
+
+		var userID *uuid.UUID
+		if id, ok := middleware.GetUserID(c); ok {
+			userID = &id
+		}
+
+		searchQuery := models.SearchQuery{
+			UserID:       userID,
+			Query:        query,
+			ResultsCount: resultsCount,
+		}
+
+		if err := database.DB.Create(&searchQuery).Error; err != nil {
+			log.Printf("Failed to track search query: %v", err)
+		}
+	}()
+}
+
 // GetRecommendations returns ML-generated product recommendations
 // @Summary Get product recommendations
-// @Description Get personalized product recommendations using ML algorithms
+// @Description Get personalized product recommendations using ML algorithms with reasoning
 // @Tags Products
 // @Accept json
 // @Produce json
@@ -305,7 +456,7 @@ func GetRecommendations(c *fiber.Ctx) error {
 	// Try to get fresh recommendations from ML service
 	go generateMLRecommendations(userID, limit)
 
-	// Get recommendations from database
+	// Get recommendations from database with reasoning
 	var recommendations []models.Recommendation
 	if err := database.DB.Where("user_id = ?", userID).
 		Preload("Product").
@@ -317,16 +468,21 @@ func GetRecommendations(c *fiber.Ctx) error {
 		})
 	}
 
-	// Extract products from recommendations
-	var products []ProductResponse
+	// Extract products from recommendations with reasoning
+	var products []ProductRecommendationResponse
 	for _, rec := range recommendations {
-		products = append(products, ProductResponse{
+		reasoning := generateRecommendationReasoning(userID, rec)
+
+		products = append(products, ProductRecommendationResponse{
 			Product:       rec.Product,
+			Score:         rec.Score,
+			Algorithm:     rec.AlgorithmType,
+			Reasoning:     reasoning,
 			IsRecommended: true,
 		})
 	}
 
-	// If no recommendations found, return popular products
+	// If no recommendations found, return popular products with reasoning
 	if len(products) == 0 {
 		var popularProducts []models.Product
 		if err := database.DB.Order("created_at DESC").Limit(limit).Find(&popularProducts).Error; err != nil {
@@ -336,17 +492,207 @@ func GetRecommendations(c *fiber.Ctx) error {
 		}
 
 		for _, product := range popularProducts {
-			products = append(products, ProductResponse{
+			reasoning := RecommendationReasoning{
+				Primary:   "Popular item",
+				Secondary: "This product is trending among other users",
+				Factors:   []string{"Recently added", "High general interest"},
+			}
+
+			products = append(products, ProductRecommendationResponse{
 				Product:       product,
+				Score:         0.5, // Default score for popular items
+				Algorithm:     "popular",
+				Reasoning:     reasoning,
 				IsRecommended: false,
 			})
 		}
 	}
 
+	// Get user insights for context
+	userInsights := getUserRecommendationInsights(userID)
+
 	return c.JSON(fiber.Map{
 		"recommendations": products,
 		"user_id":         userID,
+		"insights":        userInsights,
+		"total_count":     len(products),
 	})
+}
+
+// ProductRecommendationResponse represents a recommendation with reasoning
+type ProductRecommendationResponse struct {
+	models.Product
+	Score         float64                 `json:"score"`
+	Algorithm     string                  `json:"algorithm"`
+	Reasoning     RecommendationReasoning `json:"reasoning"`
+	IsRecommended bool                    `json:"is_recommended"`
+}
+
+// RecommendationReasoning explains why an item is recommended
+type RecommendationReasoning struct {
+	Primary   string   `json:"primary_reason"`
+	Secondary string   `json:"secondary_reason"`
+	Factors   []string `json:"contributing_factors"`
+}
+
+// UserRecommendationInsights provides context about user preferences
+type UserRecommendationInsights struct {
+	TopCategories       []string `json:"top_categories"`
+	RecentActivity      string   `json:"recent_activity"`
+	PreferenceStyle     string   `json:"preference_style"`
+	RecommendationCount int64    `json:"total_recommendations"`
+}
+
+// Generate reasoning for why an item is recommended
+func generateRecommendationReasoning(userID uuid.UUID, rec models.Recommendation) RecommendationReasoning {
+	var reasoning RecommendationReasoning
+	var factors []string
+
+	// Base reasoning on algorithm type
+	switch rec.AlgorithmType {
+	case "collaborative":
+		reasoning.Primary = "Users like you also liked this"
+		reasoning.Secondary = "Based on similar user preferences and purchase patterns"
+		factors = append(factors, "Similar user behavior", "Collaborative filtering")
+
+	case "content_based":
+		reasoning.Primary = "Matches your interests"
+		reasoning.Secondary = "Similar to products you've viewed or purchased"
+		factors = append(factors, "Content similarity", "Your browsing history")
+
+	case "hybrid":
+		reasoning.Primary = "Personalized for you"
+		reasoning.Secondary = "Combines your preferences with similar user patterns"
+		factors = append(factors, "Hybrid algorithm", "Personal + collaborative data")
+
+	default:
+		reasoning.Primary = "Recommended for you"
+		reasoning.Secondary = "Based on our recommendation system"
+		factors = append(factors, "General recommendation")
+	}
+
+	// Add score-based factors
+	if rec.Score > 0.8 {
+		factors = append(factors, "High confidence match")
+	} else if rec.Score > 0.6 {
+		factors = append(factors, "Good match")
+	} else {
+		factors = append(factors, "Potential interest")
+	}
+
+	// Get user's interaction with this category
+	var categoryInteractions int64
+	database.DB.Table("user_interactions ui").
+		Joins("JOIN products p ON ui.product_id = p.id").
+		Where("ui.user_id = ? AND p.category = ?", userID, rec.Product.Category).
+		Count(&categoryInteractions)
+
+	if categoryInteractions > 0 {
+		factors = append(factors, fmt.Sprintf("You've shown interest in %s", rec.Product.Category))
+	}
+
+	// Check if user has similar products
+	var similarProducts int64
+	database.DB.Table("user_interactions ui").
+		Joins("JOIN products p ON ui.product_id = p.id").
+		Where("ui.user_id = ? AND p.category = ? AND ui.interaction_type IN ?",
+			userID, rec.Product.Category, []string{"view", "cart_add", "purchase"}).
+		Count(&similarProducts)
+
+	if similarProducts > 0 {
+		factors = append(factors, "Similar to your previous choices")
+	}
+
+	// Check price range preference
+	var avgSpent float64
+	database.DB.Table("order_items oi").
+		Joins("JOIN orders o ON oi.order_id = o.id").
+		Joins("JOIN products p ON oi.product_id = p.id").
+		Where("o.user_id = ? AND p.category = ?", userID, rec.Product.Category).
+		Select("AVG(oi.price)").
+		Scan(&avgSpent)
+
+	if avgSpent > 0 {
+		priceDiff := (rec.Product.Price - avgSpent) / avgSpent
+		if priceDiff < 0.2 && priceDiff > -0.2 {
+			factors = append(factors, "Within your usual price range")
+		}
+	}
+
+	reasoning.Factors = factors
+	return reasoning
+}
+
+// Get user insights for recommendation context
+func getUserRecommendationInsights(userID uuid.UUID) UserRecommendationInsights {
+	var insights UserRecommendationInsights
+
+	// Get top categories
+	var topCategories []struct {
+		Category string `json:"category"`
+		Count    int64  `json:"count"`
+	}
+
+	database.DB.Table("user_interactions ui").
+		Select("p.category, COUNT(*) as count").
+		Joins("JOIN products p ON ui.product_id = p.id").
+		Where("ui.user_id = ?", userID).
+		Group("p.category").
+		Order("count DESC").
+		Limit(3).
+		Scan(&topCategories)
+
+	for _, cat := range topCategories {
+		insights.TopCategories = append(insights.TopCategories, cat.Category)
+	}
+
+	// Recent activity
+	var recentInteractions int64
+	weekAgo := time.Now().AddDate(0, 0, -7)
+	database.DB.Model(&models.UserInteraction{}).
+		Where("user_id = ? AND created_at >= ?", userID, weekAgo).
+		Count(&recentInteractions)
+
+	if recentInteractions > 20 {
+		insights.RecentActivity = "Very active"
+	} else if recentInteractions > 10 {
+		insights.RecentActivity = "Active"
+	} else if recentInteractions > 0 {
+		insights.RecentActivity = "Moderate"
+	} else {
+		insights.RecentActivity = "Low activity"
+	}
+
+	// Preference style based on interaction patterns
+	var viewToPurchaseRatio float64
+	var totalViews, totalPurchases int64
+
+	database.DB.Model(&models.UserInteraction{}).
+		Where("user_id = ? AND interaction_type = ?", userID, "view").
+		Count(&totalViews)
+
+	database.DB.Model(&models.UserInteraction{}).
+		Where("user_id = ? AND interaction_type = ?", userID, "purchase").
+		Count(&totalPurchases)
+
+	if totalViews > 0 {
+		viewToPurchaseRatio = float64(totalPurchases) / float64(totalViews)
+	}
+
+	if viewToPurchaseRatio > 0.1 {
+		insights.PreferenceStyle = "Decisive buyer"
+	} else if viewToPurchaseRatio > 0.05 {
+		insights.PreferenceStyle = "Careful shopper"
+	} else {
+		insights.PreferenceStyle = "Browser"
+	}
+
+	// Total recommendations count
+	database.DB.Model(&models.Recommendation{}).
+		Where("user_id = ?", userID).
+		Count(&insights.RecommendationCount)
+
+	return insights
 }
 
 // Helper functions for tracking

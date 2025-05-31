@@ -21,6 +21,9 @@ type User struct {
 	ShoppingCart     *ShoppingCart     `json:"shopping_cart,omitempty" gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 	UserInteractions []UserInteraction `json:"user_interactions,omitempty" gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 	Recommendations  []Recommendation  `json:"recommendations,omitempty" gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Favorites        []Favorite        `json:"favorites,omitempty" gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Upvotes          []Upvote          `json:"upvotes,omitempty" gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Comments         []Comment         `json:"comments,omitempty" gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }
 
 // Product represents a product in the e-commerce platform
@@ -41,6 +44,11 @@ type Product struct {
 	UserInteractions []UserInteraction `json:"user_interactions,omitempty" gorm:"foreignKey:ProductID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 	Recommendations  []Recommendation  `json:"recommendations,omitempty" gorm:"foreignKey:ProductID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 	ProductViews     []ProductView     `json:"product_views,omitempty" gorm:"foreignKey:ProductID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Favorites        []Favorite        `json:"favorites,omitempty" gorm:"foreignKey:ProductID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Upvotes          []Upvote          `json:"upvotes,omitempty" gorm:"foreignKey:ProductID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Comments         []Comment         `json:"comments,omitempty" gorm:"foreignKey:ProductID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Discounts        []Discount        `json:"discounts,omitempty" gorm:"foreignKey:ProductID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Tags             []Tag             `json:"tags,omitempty" gorm:"many2many:product_tags;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }
 
 // Order represents an order placed by a user
@@ -156,41 +164,6 @@ type RecommendationFeedback struct {
 	Product Product `json:"product" gorm:"foreignKey:ProductID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }
 
-// ChatSession represents a chat session with the bot
-type ChatSession struct {
-	ID        uuid.UUID  `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
-	UserID    *uuid.UUID `json:"user_id" gorm:"type:uuid;index"`
-	SessionID string     `json:"session_id" gorm:"uniqueIndex;not null"`
-	StartedAt time.Time  `json:"started_at" gorm:"index"`
-	EndedAt   *time.Time `json:"ended_at" gorm:"index"`
-
-	// Relationships
-	User         *User         `json:"user,omitempty" gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL"`
-	ChatMessages []ChatMessage `json:"chat_messages" gorm:"foreignKey:SessionID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
-}
-
-// ChatMessage represents a message in a chat session
-type ChatMessage struct {
-	ID         uuid.UUID `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
-	SessionID  uuid.UUID `json:"session_id" gorm:"type:uuid;not null;index"`
-	Message    string    `json:"message" gorm:"not null"`
-	SenderType string    `json:"sender_type" gorm:"not null;index"` // 'user', 'bot'
-	Intent     string    `json:"intent" gorm:"index"`
-	CreatedAt  time.Time `json:"created_at" gorm:"index"` // Changed from Timestamp to CreatedAt for consistency
-
-	// Relationships
-	Session ChatSession `json:"session" gorm:"foreignKey:SessionID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
-}
-
-// ChatbotIntent represents chatbot intents and responses
-type ChatbotIntent struct {
-	ID              uuid.UUID `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
-	IntentName      string    `json:"intent_name" gorm:"uniqueIndex;not null"`
-	TrainingPhrases []string  `json:"training_phrases" gorm:"type:text[]"`
-	Responses       []string  `json:"responses" gorm:"type:text[]"`
-	CreatedAt       time.Time `json:"created_at" gorm:"index"`
-}
-
 // UserSession represents user sessions for analytics
 type UserSession struct {
 	ID        uuid.UUID  `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
@@ -236,6 +209,89 @@ type MLModelPerformance struct {
 	RecallScore    float64   `json:"recall_score" gorm:"type:decimal(5,4)"`
 	F1Score        float64   `json:"f1_score" gorm:"type:decimal(5,4)"`
 	CreatedAt      time.Time `json:"created_at" gorm:"index"` // Changed from Timestamp to CreatedAt for consistency
+}
+
+// Favorite represents user's favorite products
+type Favorite struct {
+	ID        uuid.UUID `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
+	UserID    uuid.UUID `json:"user_id" gorm:"type:uuid;not null;index"`
+	ProductID uuid.UUID `json:"product_id" gorm:"type:uuid;not null;index"`
+	CreatedAt time.Time `json:"created_at" gorm:"index"`
+
+	// Relationships
+	User    User    `json:"user" gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Product Product `json:"product" gorm:"foreignKey:ProductID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+}
+
+// Upvote represents user upvotes on products
+type Upvote struct {
+	ID        uuid.UUID `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
+	UserID    uuid.UUID `json:"user_id" gorm:"type:uuid;not null;index"`
+	ProductID uuid.UUID `json:"product_id" gorm:"type:uuid;not null;index"`
+	CreatedAt time.Time `json:"created_at" gorm:"index"`
+
+	// Relationships
+	User    User    `json:"user" gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Product Product `json:"product" gorm:"foreignKey:ProductID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+}
+
+// Comment represents user comments on products
+type Comment struct {
+	ID        uuid.UUID `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
+	UserID    uuid.UUID `json:"user_id" gorm:"type:uuid;not null;index"`
+	ProductID uuid.UUID `json:"product_id" gorm:"type:uuid;not null;index"`
+	Content   string    `json:"content" gorm:"type:text;not null"`
+	Rating    int       `json:"rating" gorm:"check:rating >= 1 AND rating <= 5"` // 1-5 star rating
+	CreatedAt time.Time `json:"created_at" gorm:"index"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"index"`
+
+	// Relationships
+	User    User    `json:"user" gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Product Product `json:"product" gorm:"foreignKey:ProductID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+}
+
+// Discount represents product discounts
+type Discount struct {
+	ID                uuid.UUID  `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
+	ProductID         *uuid.UUID `json:"product_id" gorm:"type:uuid;index"`    // Nullable for category-wide discounts
+	Category          *string    `json:"category" gorm:"index"`                // Nullable for product-specific discounts
+	DiscountType      string     `json:"discount_type" gorm:"not null;index"`  // 'percentage', 'fixed_amount'
+	DiscountValue     float64    `json:"discount_value" gorm:"not null"`       // Percentage (0-100) or fixed amount
+	MinOrderAmount    float64    `json:"min_order_amount" gorm:"default:0"`    // Minimum order amount to apply discount
+	MaxDiscountAmount float64    `json:"max_discount_amount" gorm:"default:0"` // Maximum discount amount (for percentage)
+	StartDate         time.Time  `json:"start_date" gorm:"not null;index"`
+	EndDate           time.Time  `json:"end_date" gorm:"not null;index"`
+	IsActive          bool       `json:"is_active" gorm:"default:true;index"`
+	UsageLimit        int        `json:"usage_limit" gorm:"default:0"` // 0 = unlimited
+	UsageCount        int        `json:"usage_count" gorm:"default:0"`
+	CreatedAt         time.Time  `json:"created_at" gorm:"index"`
+	UpdatedAt         time.Time  `json:"updated_at" gorm:"index"`
+
+	// Relationships
+	Product *Product `json:"product,omitempty" gorm:"foreignKey:ProductID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+}
+
+// Tag represents product tags
+type Tag struct {
+	ID          uuid.UUID `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
+	Name        string    `json:"name" gorm:"uniqueIndex;not null;max:50"`
+	Description string    `json:"description" gorm:"max:255"`
+	Color       string    `json:"color" gorm:"max:7"` // Hex color code
+	CreatedAt   time.Time `json:"created_at" gorm:"index"`
+
+	// Relationships
+	Products []Product `json:"products,omitempty" gorm:"many2many:product_tags;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+}
+
+// ProductTag represents the many-to-many relationship between products and tags
+type ProductTag struct {
+	ProductID uuid.UUID `json:"product_id" gorm:"type:uuid;not null;index"`
+	TagID     uuid.UUID `json:"tag_id" gorm:"type:uuid;not null;index"`
+	CreatedAt time.Time `json:"created_at" gorm:"index"`
+
+	// Relationships
+	Product Product `json:"product" gorm:"foreignKey:ProductID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Tag     Tag     `json:"tag" gorm:"foreignKey:TagID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }
 
 // BeforeCreate hook for User model

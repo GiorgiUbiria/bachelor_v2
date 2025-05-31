@@ -60,7 +60,6 @@ export const useCartStore = create<CartState & CartActions>()(
 
           const response = await apiService.cart.get()
           
-          // Transform backend response to match frontend interface
           const backendCart = response.data.cart
           const transformedCart: Cart = {
             id: backendCart.id,
@@ -92,7 +91,6 @@ export const useCartStore = create<CartState & CartActions>()(
 
           await apiService.cart.addItem(productId, quantity)
           
-          // Refetch cart to get updated data
           const response = await apiService.cart.get()
           const backendCart = response.data.cart
           const transformedCart: Cart = {
@@ -124,7 +122,6 @@ export const useCartStore = create<CartState & CartActions>()(
 
           await apiService.cart.updateItem(itemId, quantity)
           
-          // Refetch cart to get updated data
           const response = await apiService.cart.get()
           const backendCart = response.data.cart
           const transformedCart: Cart = {
@@ -156,7 +153,6 @@ export const useCartStore = create<CartState & CartActions>()(
 
           await apiService.cart.removeItem(itemId)
           
-          // Refetch cart to get updated data
           const response = await apiService.cart.get()
           const backendCart = response.data.cart
           const transformedCart: Cart = {

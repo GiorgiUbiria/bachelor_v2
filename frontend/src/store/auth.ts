@@ -33,14 +33,12 @@ type AuthStore = AuthState & AuthActions
 export const useAuthStore = create<AuthStore>()(
   persist(
     immer((set, get) => ({
-      // Initial state
       user: null,
       token: null,
       isAuthenticated: false,
       isLoading: false,
       error: null,
 
-      // Actions
       login: async (email: string, password: string) => {
         set((state) => {
           state.isLoading = true
@@ -96,22 +94,12 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       logout: async () => {
-        try {
-          // Call logout endpoint if authenticated
-          if (get().isAuthenticated) {
-            await apiService.auth.logout()
-          }
-        } catch (error) {
-          // Ignore logout errors, still clear local state
-          console.warn('Logout request failed:', error)
-        } finally {
-          set((state) => {
-            state.user = null
-            state.token = null
-            state.isAuthenticated = false
-            state.error = null
-          })
-        }
+        set((state) => {
+          state.user = null
+          state.token = null
+          state.isAuthenticated = false
+          state.error = null
+        })
       },
 
       checkAuth: async () => {
@@ -123,7 +111,7 @@ export const useAuthStore = create<AuthStore>()(
             state.isLoading = true
           })
 
-          const response = await apiService.auth.me()
+          const response = await apiService.auth.profile()
           const user = response.data
 
           set((state) => {
@@ -132,7 +120,6 @@ export const useAuthStore = create<AuthStore>()(
             state.isLoading = false
           })
         } catch (error) {
-          // Token is invalid, clear auth state
           set((state) => {
             state.user = null
             state.token = null

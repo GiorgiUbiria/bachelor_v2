@@ -95,7 +95,7 @@ func main() {
 			AppName:  "Bachelor E-commerce API",
 			ClientId: "bachelor-api-client",
 		},
-		OAuth2RedirectUrl: "http://localhost:8080/swagger/oauth2-redirect.html",
+		OAuth2RedirectUrl: "http://localhost:8081/swagger/oauth2-redirect.html",
 	}))
 
 	// Security middleware
@@ -277,11 +277,56 @@ func main() {
 	ml.Get("/status", handlers.GetMLStatus)
 	ml.Post("/train", middleware.AuthRequired(), handlers.TrainMLModels)
 
-	// Chatbot routes (to be implemented)
-	chat := api.Group("/chat")
-	chat.Post("/message", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{"message": "Chatbot endpoint coming soon"})
-	})
+	// New ML service routes
+	// Sentiment Analysis
+	ml.Get("/sentiment/product/:id", middleware.AuthRequired(), handlers.GetProductSentiment)
+	ml.Get("/sentiment/category/:category", middleware.AuthRequired(), handlers.GetCategorySentiment)
+	ml.Get("/sentiment/insights", middleware.AuthRequired(), handlers.GetSentimentInsights)
+
+	// Auto-Tagging
+	ml.Get("/auto-tagging/suggest/:id", middleware.AuthRequired(), handlers.SuggestProductTags)
+	ml.Post("/auto-tagging/auto-tag", middleware.AuthRequired(), handlers.AutoTagProducts)
+	ml.Get("/auto-tagging/insights", middleware.AuthRequired(), handlers.GetTaggingInsights)
+
+	// Smart Discounts
+	ml.Get("/smart-discounts/suggest/product/:id", middleware.AuthRequired(), handlers.SuggestProductDiscount)
+	ml.Get("/smart-discounts/suggest/category/:category", middleware.AuthRequired(), handlers.SuggestCategoryDiscounts)
+	ml.Get("/smart-discounts/insights", middleware.AuthRequired(), handlers.GetDiscountInsights)
+
+	// ML Services Management
+	ml.Post("/initialize-services", middleware.AuthRequired(), handlers.InitializeMLServices)
+
+	// Data enrichment routes
+	// Favorites
+	favorites := api.Group("/favorites", middleware.AuthRequired())
+	favorites.Get("/", handlers.GetFavorites)
+	favorites.Post("/", handlers.AddFavorite)
+	favorites.Delete("/:product_id", handlers.RemoveFavorite)
+
+	// Upvotes
+	upvotes := api.Group("/upvotes")
+	upvotes.Get("/:product_id", handlers.GetProductUpvotes)
+	upvotes.Post("/", middleware.AuthRequired(), handlers.AddUpvote)
+	upvotes.Delete("/:product_id", middleware.AuthRequired(), handlers.RemoveUpvote)
+
+	// Comments
+	comments := api.Group("/comments")
+	comments.Get("/:product_id", handlers.GetProductComments)
+	comments.Post("/", middleware.AuthRequired(), handlers.AddComment)
+	comments.Put("/:comment_id", middleware.AuthRequired(), handlers.UpdateComment)
+	comments.Delete("/:comment_id", middleware.AuthRequired(), handlers.DeleteComment)
+
+	// Tags
+	tags := api.Group("/tags")
+	tags.Get("/", handlers.GetTags)
+	tags.Post("/", middleware.AuthRequired(), handlers.CreateTag)
+	tags.Get("/products/:product_id", handlers.GetProductTags)
+	tags.Post("/products", middleware.AuthRequired(), handlers.AddProductTag)
+
+	// Discounts
+	discounts := api.Group("/discounts")
+	discounts.Get("/active", handlers.GetActiveDiscounts)
+	discounts.Post("/", middleware.AuthRequired(), handlers.CreateDiscount)
 
 	// 404 handler
 	app.Use(func(c *fiber.Ctx) error {

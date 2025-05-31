@@ -13,8 +13,9 @@ import (
 
 // CreateOrderRequest represents the request to create an order
 type CreateOrderRequest struct {
-	PaymentMethod   string `json:"payment_method" validate:"required,oneof=credit_card debit_card paypal bank_transfer" example:"credit_card"`
-	ShippingAddress string `json:"shipping_address" validate:"required,min=10,max=500" example:"123 Main St, City, State 12345"`
+	PaymentMethod   string      `json:"payment_method" validate:"required,oneof=credit_card debit_card paypal bank_transfer" example:"credit_card"`
+	ShippingAddress string      `json:"shipping_address" validate:"required,min=10,max=500" example:"123 Main St, City, State 12345"`
+	CartItemIDs     []uuid.UUID `json:"cart_item_ids,omitempty" example:"[\"123e4567-e89b-12d3-a456-426614174000\"]"` // Optional: specific cart items to order
 }
 
 // UpdateOrderStatusRequest represents the request to update order status
@@ -122,12 +123,12 @@ func GetOrder(c *fiber.Ctx) error {
 
 // CreateOrder creates a new order from the user's cart
 // @Summary Create order from cart
-// @Description Create a new order from the user's current cart items with atomic stock management
+// @Description Create a new order from the user's current cart items or specific cart items with atomic stock management
 // @Tags Orders
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param request body CreateOrderRequest true "Order creation data"
+// @Param request body CreateOrderRequest true "Order creation data (cart_item_ids optional - if not provided, orders all cart items)"
 // @Success 201 {object} map[string]interface{} "Order created successfully"
 // @Failure 400 {object} map[string]interface{} "Invalid request, empty cart, or insufficient stock"
 // @Failure 401 {object} map[string]interface{} "User not authenticated"
@@ -184,11 +185,42 @@ func CreateOrder(c *fiber.Ctx) error {
 		})
 	}
 
+	// Filter cart items based on request
+	var itemsToOrder []models.CartItem
+	if len(req.CartItemIDs) > 0 {
+		// Order specific cart items
+		cartItemMap := make(map[uuid.UUID]models.CartItem)
+		for _, item := range cart.CartItems {
+			cartItemMap[item.ID] = item
+		}
+
+		for _, requestedID := range req.CartItemIDs {
+			if item, exists := cartItemMap[requestedID]; exists {
+				itemsToOrder = append(itemsToOrder, item)
+			} else {
+				tx.Rollback()
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"error": "Cart item not found: " + requestedID.String(),
+				})
+			}
+		}
+	} else {
+		// Order all cart items (default behavior)
+		itemsToOrder = cart.CartItems
+	}
+
+	if len(itemsToOrder) == 0 {
+		tx.Rollback()
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "No valid cart items to order",
+		})
+	}
+
 	// Validate stock availability with row-level locking and atomic updates
 	var total float64
 	stockUpdates := make(map[uuid.UUID]int) // Track stock updates for rollback if needed
 
-	for _, item := range cart.CartItems {
+	for _, item := range itemsToOrder {
 		// Lock the product row to prevent concurrent stock modifications
 		var product models.Product
 		if err := tx.Set("gorm:query_option", "FOR UPDATE").
@@ -229,7 +261,8 @@ func CreateOrder(c *fiber.Ctx) error {
 	}
 
 	// Create order items and update stock atomically
-	for _, cartItem := range cart.CartItems {
+	var orderedCartItemIDs []uuid.UUID
+	for _, cartItem := range itemsToOrder {
 		// Get current product price for order item
 		var currentProduct models.Product
 		if err := tx.First(&currentProduct, cartItem.ProductID).Error; err != nil {
@@ -276,13 +309,16 @@ func CreateOrder(c *fiber.Ctx) error {
 
 		// Track purchase interaction safely
 		go trackUserInteraction(userID, cartItem.ProductID, "purchase", c.Get("X-Session-ID"))
+
+		// Track which cart items were ordered for removal
+		orderedCartItemIDs = append(orderedCartItemIDs, cartItem.ID)
 	}
 
-	// Clear cart
-	if err := tx.Where("cart_id = ?", cart.ID).Delete(&models.CartItem{}).Error; err != nil {
+	// Remove only the ordered cart items (not the entire cart)
+	if err := tx.Where("id IN ?", orderedCartItemIDs).Delete(&models.CartItem{}).Error; err != nil {
 		tx.Rollback()
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to clear cart",
+			"error": "Failed to remove ordered items from cart",
 		})
 	}
 
@@ -299,14 +335,16 @@ func CreateOrder(c *fiber.Ctx) error {
 		First(&order).Error; err != nil {
 		// Order was created successfully, but we can't load it for response
 		return c.Status(fiber.StatusCreated).JSON(fiber.Map{
-			"message":  "Order created successfully",
-			"order_id": order.ID,
+			"message":             "Order created successfully",
+			"order_id":            order.ID,
+			"ordered_items_count": len(orderedCartItemIDs),
 		})
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
-		"message": "Order created successfully",
-		"order":   order,
+		"message":             "Order created successfully",
+		"order":               order,
+		"ordered_items_count": len(orderedCartItemIDs),
 	})
 }
 

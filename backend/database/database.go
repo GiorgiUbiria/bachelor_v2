@@ -120,13 +120,16 @@ func AutoMigrate() error {
 		&models.SearchQuery{},
 		&models.Recommendation{},
 		&models.RecommendationFeedback{},
-		&models.ChatSession{},
-		&models.ChatMessage{},
-		&models.ChatbotIntent{},
 		&models.UserSession{},
 		&models.ProductView{},
 		&models.SearchAnalytics{},
 		&models.MLModelPerformance{},
+		&models.Favorite{},
+		&models.Upvote{},
+		&models.Comment{},
+		&models.Discount{},
+		&models.Tag{},
+		&models.ProductTag{},
 	}
 
 	var migrationErrors []error
@@ -206,15 +209,6 @@ func addCustomConstraints() error {
 		CHECK (feedback_type IN ('clicked', 'purchased', 'dismissed', 'liked'))
 	`).Error; err != nil {
 		log.Printf("Warning: Failed to add feedback type check constraint: %v", err)
-	}
-
-	// Add check constraints for valid sender types in chat messages
-	if err := DB.Exec(`
-		ALTER TABLE chat_messages 
-		ADD CONSTRAINT IF NOT EXISTS check_sender_type 
-		CHECK (sender_type IN ('user', 'bot', 'system'))
-	`).Error; err != nil {
-		log.Printf("Warning: Failed to add sender type check constraint: %v", err)
 	}
 
 	log.Println("Custom constraints and indexes added successfully")

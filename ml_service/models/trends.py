@@ -21,7 +21,6 @@ class TrendAnalyzer:
         self.is_trained = False
         
     async def initialize(self):
-        """Initialize the trend analyzer with historical data"""
         try:
             await self._load_historical_data()
             await self._analyze_trends()
@@ -32,10 +31,8 @@ class TrendAnalyzer:
             raise
 
     async def _load_historical_data(self):
-        """Load historical sales and interaction data"""
         conn = await get_db_connection()
         try:
-            # Load sales data
             sales_query = """
             SELECT 
                 p.id as product_id,
@@ -57,7 +54,6 @@ class TrendAnalyzer:
             cutoff_date = datetime.now() - timedelta(days=90)
             sales_rows = await conn.fetch(sales_query, cutoff_date)
             
-            # Load interaction data
             interaction_query = """
             SELECT 
                 p.id as product_id,
@@ -75,7 +71,6 @@ class TrendAnalyzer:
             
             interaction_rows = await conn.fetch(interaction_query, cutoff_date)
             
-            # Load search data
             search_query = """
             SELECT 
                 DATE(created_at) as date,
@@ -90,7 +85,6 @@ class TrendAnalyzer:
             
             search_rows = await conn.fetch(search_query, cutoff_date)
             
-            # Convert to DataFrames
             self.sales_data = pd.DataFrame([dict(row) for row in sales_rows])
             self.interaction_data = pd.DataFrame([dict(row) for row in interaction_rows])
             self.search_data = pd.DataFrame([dict(row) for row in search_rows])
@@ -102,21 +96,15 @@ class TrendAnalyzer:
             await release_db_connection(conn)
 
     async def _analyze_trends(self):
-        """Analyze trends in the data"""
-        # Analyze product trends
         await self._analyze_product_trends()
         
-        # Analyze category trends
         await self._analyze_category_trends()
         
-        # Analyze search trends
         await self._analyze_search_trends()
         
-        # Analyze seasonal patterns
         await self._analyze_seasonal_patterns()
 
     async def _analyze_product_trends(self):
-        """Analyze individual product trends"""
         if self.sales_data.empty:
             return
             
@@ -127,17 +115,15 @@ class TrendAnalyzer:
                 self.sales_data['product_id'] == product_id
             ].copy()
             
-            if len(product_data) < 3:  # Need at least 3 data points
+            if len(product_data) < 3:
                 continue
                 
-            # Prepare time series data
             product_data['date'] = pd.to_datetime(product_data['date'])
             product_data = product_data.sort_values('date')
             product_data['days_since_start'] = (
                 product_data['date'] - product_data['date'].min()
             ).dt.days
             
-            # Calculate trend metrics
             trend_metrics = self._calculate_trend_metrics(
                 product_data['days_since_start'].values,
                 product_data['units_sold'].values,
@@ -156,13 +142,11 @@ class TrendAnalyzer:
         self.trend_data['products'] = product_trends
 
     async def _analyze_category_trends(self):
-        """Analyze category-level trends"""
         if self.sales_data.empty:
             return
             
         category_trends = {}
         
-        # Aggregate by category and date
         category_data = self.sales_data.groupby(['category', 'date']).agg({
             'units_sold': 'sum',
             'revenue': 'sum'
@@ -198,11 +182,9 @@ class TrendAnalyzer:
         self.trend_data['categories'] = category_trends
 
     async def _analyze_search_trends(self):
-        """Analyze search query trends"""
         if self.search_data.empty:
             return
             
-        # Aggregate search data by date
         daily_searches = self.search_data.groupby('date').agg({
             'search_count': 'sum'
         }).reset_index()
@@ -215,13 +197,11 @@ class TrendAnalyzer:
                 daily_searches['date'] - daily_searches['date'].min()
             ).dt.days
             
-            # Calculate search volume trend
             search_trend = self._calculate_simple_trend(
                 daily_searches['days_since_start'].values,
                 daily_searches['search_count'].values
             )
             
-            # Top trending queries
             query_trends = self.search_data.groupby('query').agg({
                 'search_count': 'sum'
             }).reset_index().sort_values('search_count', ascending=False)
@@ -242,7 +222,6 @@ class TrendAnalyzer:
         sales_with_date['day_of_week'] = sales_with_date['date'].dt.dayofweek
         sales_with_date['week_of_year'] = sales_with_date['date'].dt.isocalendar().week
         
-        # Day of week patterns
         dow_patterns = sales_with_date.groupby('day_of_week').agg({
             'units_sold': 'mean',
             'revenue': 'mean'
@@ -253,7 +232,6 @@ class TrendAnalyzer:
             4: 'Friday', 5: 'Saturday', 6: 'Sunday'
         })
         
-        # Weekly patterns
         weekly_patterns = sales_with_date.groupby('week_of_year').agg({
             'units_sold': 'mean',
             'revenue': 'mean'
@@ -265,24 +243,19 @@ class TrendAnalyzer:
         }
 
     def _calculate_trend_metrics(self, x_values: np.ndarray, units_sold: np.ndarray, revenue: np.ndarray) -> Dict[str, Any]:
-        """Calculate trend metrics for given data"""
         try:
-            # Reshape for sklearn
             X = x_values.reshape(-1, 1)
             
-            # Units sold trend
             units_model = LinearRegression()
             units_model.fit(X, units_sold)
             units_slope = units_model.coef_[0]
             units_r2 = units_model.score(X, units_sold)
             
-            # Revenue trend
             revenue_model = LinearRegression()
             revenue_model.fit(X, revenue)
             revenue_slope = revenue_model.coef_[0]
             revenue_r2 = revenue_model.score(X, revenue)
             
-            # Trend classification
             units_trend = self._classify_trend(units_slope, units_r2)
             revenue_trend = self._classify_trend(revenue_slope, revenue_r2)
             
@@ -301,7 +274,6 @@ class TrendAnalyzer:
             return {}
 
     def _calculate_simple_trend(self, x_values: np.ndarray, y_values: np.ndarray) -> Dict[str, Any]:
-        """Calculate simple trend for single metric"""
         try:
             X = x_values.reshape(-1, 1)
             model = LinearRegression()
@@ -322,8 +294,7 @@ class TrendAnalyzer:
             return {}
 
     def _classify_trend(self, slope: float, r2: float) -> str:
-        """Classify trend based on slope and R²"""
-        if r2 < 0.3:  # Low correlation
+        if r2 < 0.3:
             return 'stable'
         elif slope > 0.1:
             return 'growing'
@@ -333,13 +304,11 @@ class TrendAnalyzer:
             return 'stable'
 
     async def get_product_trends(self, limit: int = 20) -> Dict[str, Any]:
-        """Get trending products"""
         if not self.is_trained:
             await self.initialize()
             
         product_trends = self.trend_data.get('products', {})
         
-        # Sort by trend strength and recent performance
         trending_products = []
         for product_id, data in product_trends.items():
             metrics = data.get('trend_metrics', {})
@@ -355,7 +324,6 @@ class TrendAnalyzer:
                 'trend_metrics': metrics
             })
         
-        # Sort by trend score
         trending_products.sort(key=lambda x: x['trend_score'], reverse=True)
         
         return {
@@ -364,33 +332,28 @@ class TrendAnalyzer:
         }
 
     async def get_category_trends(self) -> Dict[str, Any]:
-        """Get category trends"""
         if not self.is_trained:
             await self.initialize()
             
         return self.trend_data.get('categories', {})
 
     async def get_search_trends(self) -> Dict[str, Any]:
-        """Get search trends"""
         if not self.is_trained:
             await self.initialize()
             
         return self.trend_data.get('search', {})
 
     async def get_seasonal_patterns(self) -> Dict[str, Any]:
-        """Get seasonal patterns"""
         if not self.is_trained:
             await self.initialize()
             
         return self.trend_data.get('seasonal', {})
 
     async def forecast_demand(self, product_id: str, days_ahead: int = 30) -> Dict[str, Any]:
-        """Forecast demand for a specific product"""
         try:
             if not self.is_trained:
                 await self.initialize()
                 
-            # Get product historical data
             product_data = self.sales_data[
                 self.sales_data['product_id'] == product_id
             ].copy()
@@ -402,29 +365,24 @@ class TrendAnalyzer:
                     'available_data_points': len(product_data)
                 }
             
-            # Prepare data
             product_data['date'] = pd.to_datetime(product_data['date'])
             product_data = product_data.sort_values('date')
             product_data['days_since_start'] = (
                 product_data['date'] - product_data['date'].min()
             ).dt.days
             
-            # Train forecasting model
             X = product_data['days_since_start'].values.reshape(-1, 1)
             y = product_data['units_sold'].values
             
             model = LinearRegression()
             model.fit(X, y)
             
-            # Generate forecast
             last_day = product_data['days_since_start'].max()
             future_days = np.arange(last_day + 1, last_day + days_ahead + 1).reshape(-1, 1)
             forecast = model.predict(future_days)
             
-            # Ensure non-negative forecast
             forecast = np.maximum(forecast, 0)
             
-            # Calculate confidence metrics
             historical_mae = mean_absolute_error(y, model.predict(X))
             historical_rmse = np.sqrt(mean_squared_error(y, model.predict(X)))
             
@@ -446,25 +404,21 @@ class TrendAnalyzer:
             return {'error': str(e)}
 
     def _calculate_trend_score(self, metrics: Dict[str, Any]) -> float:
-        """Calculate overall trend score"""
         if not metrics:
             return 0.0
             
-        # Weight different factors
         units_slope = metrics.get('units_sold_slope', 0)
         units_r2 = metrics.get('units_sold_r2', 0)
         revenue_slope = metrics.get('revenue_slope', 0)
         revenue_r2 = metrics.get('revenue_r2', 0)
         volatility = metrics.get('volatility', 1)
         
-        # Calculate weighted score
         trend_score = (
             (units_slope * units_r2 * 0.4) +
             (revenue_slope * revenue_r2 * 0.4) +
-            (1 / (1 + volatility) * 0.2)  # Lower volatility is better
+            (1 / (1 + volatility) * 0.2)
         )
         
         return float(trend_score)
 
-# Global trend analyzer instance
 trend_analyzer = TrendAnalyzer() 
