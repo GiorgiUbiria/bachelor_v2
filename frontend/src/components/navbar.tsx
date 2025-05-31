@@ -1,6 +1,6 @@
 import { Link, useNavigate, useLocation } from 'react-router'
 import { useState, useEffect } from 'react'
-import { ShoppingBag, LogOut, Menu } from 'lucide-react'
+import { ShoppingBag, LogOut, Menu, User, Package } from 'lucide-react'
 import { useAuthStore } from '../store/auth'
 import { useCartStore } from '../store/cart'
 import { useUIStore } from '../store/ui'
@@ -139,6 +139,18 @@ export function Navbar() {
                   </div>
                 </div>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/profile">
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/orders">
+                    <Package className="mr-2 h-4 w-4" />
+                    <span>My Orders</span>
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>

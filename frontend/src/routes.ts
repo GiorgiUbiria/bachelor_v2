@@ -6,6 +6,9 @@ import Register from "./pages/register";
 import Products from "./pages/products";
 import ProductDetail from "./pages/product-detail";
 import Admin from "./pages/admin";
+import Profile from "./pages/profile";
+import Orders from "./pages/orders";
+import OrderDetail from "./pages/order-detail";
 
 export const router = createBrowserRouter([
   {
@@ -25,6 +28,17 @@ export const router = createBrowserRouter([
         children: [
           { index: true, Component: Products },
           { path: ":id", Component: ProductDetail },
+        ],
+      },
+      {
+        path: "profile",
+        Component: Profile,
+      },
+      {
+        path: "orders",
+        children: [
+          { index: true, Component: Orders },
+          { path: ":id", Component: OrderDetail },
         ],
       },
       {
