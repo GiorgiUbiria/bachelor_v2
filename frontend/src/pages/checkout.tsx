@@ -24,6 +24,7 @@ import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { Discounts } from '../components/discounts'
 
 interface CheckoutStep {
   id: number
@@ -68,6 +69,8 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [orderPlaced, setOrderPlaced] = useState(false)
   const [placedOrderId, setPlacedOrderId] = useState<string | null>(null)
+  const [discountAmount, setDiscountAmount] = useState(0)
+  const [appliedDiscountCode, setAppliedDiscountCode] = useState<string | null>(null)
 
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     firstName: '',
@@ -120,7 +123,18 @@ export default function CheckoutPage() {
   }
 
   const calculateTotal = () => {
-    return calculateSubtotal() + calculateShipping() + calculateTax()
+    const subtotal = calculateSubtotal()
+    const shipping = calculateShipping()
+    const tax = calculateTax()
+    return Math.max(0, subtotal + shipping + tax - discountAmount)
+  }
+
+  const handleDiscountApplied = (discount: number, finalTotal: number) => {
+    setDiscountAmount(discount)
+    addToast({
+      type: 'success',
+      description: `Discount applied! You saved ${formatCurrency(discount)}`
+    })
   }
 
   const validateShippingAddress = () => {
@@ -649,6 +663,12 @@ export default function CheckoutPage() {
                     <span>Tax</span>
                     <span>{formatCurrency(calculateTax())}</span>
                   </div>
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>Discount</span>
+                      <span>-{formatCurrency(discountAmount)}</span>
+                    </div>
+                  )}
                   <Separator />
                   <div className="flex justify-between font-medium text-lg">
                     <span>Total</span>
@@ -657,6 +677,15 @@ export default function CheckoutPage() {
                 </div>
 
                 <Separator className="my-4" />
+
+                {/* Discount Application */}
+                <div className="mb-4">
+                  <Discounts 
+                    mode="apply" 
+                    orderTotal={calculateSubtotal() + calculateShipping() + calculateTax()}
+                    onDiscountApplied={handleDiscountApplied}
+                  />
+                </div>
 
                 {/* Shipping Info */}
                 <div className="space-y-3 text-sm">

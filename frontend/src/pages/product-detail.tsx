@@ -15,6 +15,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
 import { CommentsManager } from '../components/comments-manager'
 import { Upvotes } from '../components/upvotes'
+import { TagsManager } from '../components/tags-manager'
+import { Discounts } from '../components/discounts'
 import apiService from '../services/api'
 import { useAuthStore } from '../store/auth'
 import { useCartStore } from '../store/cart'
@@ -398,12 +400,16 @@ export default function ProductDetailPage() {
 
       {/* Product Tabs */}
       <Tabs defaultValue="details" className="mb-12">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="details">Details</TabsTrigger>
           <TabsTrigger value="reviews">Reviews ({comments.length})</TabsTrigger>
           <TabsTrigger value="sentiment">
             <BarChart3 className="h-4 w-4 mr-2" />
             AI Sentiment
+          </TabsTrigger>
+          <TabsTrigger value="tags-discounts">
+            <Tag className="h-4 w-4 mr-2" />
+            Tags & Discounts
           </TabsTrigger>
           <TabsTrigger value="similar">Similar Products</TabsTrigger>
         </TabsList>
@@ -528,6 +534,46 @@ export default function ProductDetailPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="tags-discounts" className="mt-6">
+          <div className="space-y-6">
+            {/* Tags Management */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Tag className="h-5 w-5" />
+                  Product Tags
+                </CardTitle>
+                <CardDescription>
+                  Tags help categorize and organize products for better discovery
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <TagsManager productId={product.id} mode="product" />
+              </CardContent>
+            </Card>
+
+            {/* Discounts */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5" />
+                  Available Discounts
+                </CardTitle>
+                <CardDescription>
+                  Current discounts and AI-suggested deals for this product
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Discounts 
+                  mode="display" 
+                  productId={product.id} 
+                  category={product.category}
+                />
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="similar" className="mt-6">
