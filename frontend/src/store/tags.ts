@@ -40,7 +40,7 @@ interface TagsActions {
 type TagsStore = TagsState & TagsActions
 
 export const useTagsStore = create<TagsStore>()(
-  immer((set, get) => ({
+  immer((set) => ({
     tags: [],
     productTags: {},
     isLoading: false,

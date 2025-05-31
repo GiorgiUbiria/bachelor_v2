@@ -34,13 +34,18 @@ export default function HomePage() {
     const fetchData = async () => {
       try {
         // Fetch trending data from ML service
-        const [trendsResponse, analyticsResponse] = await Promise.all([
-          apiService.mlService.trends.dashboard(),
+        const [analyticsResponse] = await Promise.all([
           apiService.analytics.dashboard()
         ])
         
-        setTrendData(trendsResponse.data)
         setAnalytics(analyticsResponse.data)
+        
+        // Set some mock trend data for now since the ML service endpoint doesn't exist
+        setTrendData({
+          popular_products: [],
+          trending_categories: [],
+          search_trends: []
+        })
 
         // Fetch recommendations if authenticated
         if (isAuthenticated) {

@@ -57,7 +57,7 @@ interface OrdersActions {
 type OrdersStore = OrdersState & OrdersActions
 
 export const useOrdersStore = create<OrdersStore>()(
-  immer((set, get) => ({
+  immer((set) => ({
     orders: [],
     currentOrder: null,
     orderStats: null,

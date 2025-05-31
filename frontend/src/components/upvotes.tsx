@@ -196,7 +196,6 @@ export function Upvotes({
 // Alternative heart-style upvote component
 export function HeartUpvotes({ 
   productId, 
-  variant = 'button', 
   showCount = true, 
   className = '' 
 }: UpvotesProps) {

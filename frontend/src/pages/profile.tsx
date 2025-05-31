@@ -1,19 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { 
   User, 
+  Package, 
+  Heart, 
+  ShoppingCart, 
+  Star, 
+  TrendingUp, 
   Edit, 
   Save, 
   X, 
-  Package, 
-  Heart, 
-  MessageSquare, 
-  ThumbsUp, 
-  ShoppingCart,
-  TrendingUp,
-  Calendar,
   DollarSign,
-  Star,
   Activity
 } from 'lucide-react'
 import { useAuthStore } from '../store/auth'
@@ -25,7 +22,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -66,7 +62,7 @@ interface UserProfileData {
 export default function ProfilePage() {
   const { user, isAuthenticated } = useAuthStore()
   const { favorites, fetchFavorites } = useFavoritesStore()
-  const { orders, orderStats, fetchOrders, fetchOrderStats } = useOrdersStore()
+  const { orders, fetchOrders, fetchOrderStats } = useOrdersStore()
   const { addToast } = useUIStore()
 
   const [profileData, setProfileData] = useState<UserProfileData | null>(null)

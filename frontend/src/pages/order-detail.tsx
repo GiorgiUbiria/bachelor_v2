@@ -1,21 +1,17 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router'
 import { 
-  ArrowLeft,
+  ArrowLeft, 
   Package, 
-  Calendar, 
-  DollarSign, 
-  MapPin,
-  CreditCard,
-  Truck,
-  CheckCircle,
-  Clock,
-  XCircle,
-  AlertCircle,
-  Download,
-  MessageSquare,
-  Star,
-  X
+  Truck, 
+  CheckCircle, 
+  XCircle, 
+  Clock, 
+  MapPin, 
+  CreditCard, 
+  Download, 
+  MessageCircle,
+  AlertTriangle
 } from 'lucide-react'
 import { useOrdersStore } from '../store/orders'
 import { useAuthStore } from '../store/auth'
@@ -72,7 +68,7 @@ export default function OrderDetailPage() {
       case 'pending':
         return <Clock className="w-5 h-5 text-yellow-500" />
       case 'processing':
-        return <AlertCircle className="w-5 h-5 text-blue-500" />
+        return <AlertTriangle className="w-5 h-5 text-blue-500" />
       case 'shipped':
         return <Truck className="w-5 h-5 text-purple-500" />
       case 'delivered':
@@ -255,7 +251,7 @@ export default function OrderDetailPage() {
                       ['processing', 'shipped', 'delivered'].includes(currentOrder.status) 
                         ? 'text-primary' : 'text-muted-foreground'
                     }`}>
-                      <AlertCircle className="w-6 h-6" />
+                      <AlertTriangle className="w-6 h-6" />
                       <span className="text-sm font-medium">Processing</span>
                     </div>
                     <div className={`flex flex-col items-center gap-2 ${
@@ -337,7 +333,7 @@ export default function OrderDetailPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="w-5 h-5" />
+                  <CreditCard className="w-5 h-5" />
                   Order Summary
                 </CardTitle>
               </CardHeader>
@@ -412,7 +408,7 @@ export default function OrderDetailPage() {
                     disabled={isLoading}
                     className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
                   >
-                    <X className="w-4 h-4 mr-2" />
+                    <XCircle className="w-4 h-4 mr-2" />
                     Cancel Order
                   </Button>
                 )}
@@ -423,7 +419,7 @@ export default function OrderDetailPage() {
                 </Button>
                 
                 <Button variant="outline" className="w-full">
-                  <MessageSquare className="w-4 h-4 mr-2" />
+                  <MessageCircle className="w-4 h-4 mr-2" />
                   Contact Support
                 </Button>
               </CardContent>

@@ -14,7 +14,8 @@ export interface CartItem {
     id: string
     name: string
     price: number
-    image_url: string
+    image_url?: string
+    category: string
     stock: number
   }
 }
@@ -32,34 +33,47 @@ export interface Cart {
 interface CartState {
   cart: Cart | null
   isLoading: boolean
+  isUpdating: boolean
   error: string | null
+  optimisticUpdates: Record<string, { quantity: number; timestamp: number }>
 }
 
 interface CartActions {
   fetchCart: () => Promise<void>
-  addItem: (productId: string, quantity: number) => Promise<void>
+  addItem: (productId: string, quantity?: number) => Promise<void>
   updateItem: (itemId: string, quantity: number) => Promise<void>
   removeItem: (itemId: string) => Promise<void>
   clearCart: () => Promise<void>
+  
+  // Optimistic updates
+  optimisticAddItem: (productId: string, quantity: number) => void
+  optimisticUpdateItem: (itemId: string, quantity: number) => void
+  optimisticRemoveItem: (itemId: string) => void
+  clearOptimisticUpdates: () => void
+  
+  // Utility
+  getItemQuantity: (productId: string) => number
+  getTotalItems: () => number
+  getTotalAmount: () => number
+  isInCart: (productId: string) => boolean
   clearError: () => void
 }
 
-export const useCartStore = create<CartState & CartActions>()(
+type CartStore = CartState & CartActions
+
+export const useCartStore = create<CartStore>()(
   persist(
-    immer((set) => ({
+    immer((set, get) => ({
       cart: null,
       isLoading: false,
+      isUpdating: false,
       error: null,
+      optimisticUpdates: {},
 
       fetchCart: async () => {
+        set({ isLoading: true, error: null })
         try {
-          set((state) => {
-            state.isLoading = true
-            state.error = null
-          })
-
           const response = await apiService.cart.get()
-          
           const backendCart = response.data.cart
           const transformedCart: Cart = {
             id: backendCart.id,
@@ -71,26 +85,22 @@ export const useCartStore = create<CartState & CartActions>()(
             updated_at: backendCart.updated_at
           }
           
-          set((state) => {
-            state.cart = transformedCart
-            state.isLoading = false
-          })
-        } catch (error) {
-          set((state) => {
-            state.error = 'Failed to fetch cart'
-            state.isLoading = false
-          })
+          set({ cart: transformedCart })
+        } catch (error: any) {
+          set({ error: error.response?.data?.error || 'Failed to fetch cart' })
+        } finally {
+          set({ isLoading: false })
         }
       },
 
-      addItem: async (productId: string, quantity: number) => {
+      addItem: async (productId: string, quantity: number = 1) => {
+        // Optimistic update first
+        get().optimisticAddItem(productId, quantity)
+        
+        set({ isUpdating: true, error: null })
         try {
-          set((state) => {
-            state.error = null
-          })
-
-          await apiService.cart.addItem(productId, quantity)
-          
+          await apiService.cart.add(productId, quantity)
+          // Refetch cart after adding item
           const response = await apiService.cart.get()
           const backendCart = response.data.cart
           const transformedCart: Cart = {
@@ -103,107 +113,158 @@ export const useCartStore = create<CartState & CartActions>()(
             updated_at: backendCart.updated_at
           }
           
-          set((state) => {
-            state.cart = transformedCart
-          })
-        } catch (error) {
-          set((state) => {
-            state.error = 'Failed to add item to cart'
-          })
+          set({ cart: transformedCart })
+          get().clearOptimisticUpdates()
+        } catch (error: any) {
+          // Revert optimistic update on error
+          await get().fetchCart()
+          set({ error: error.response?.data?.error || 'Failed to add item to cart' })
           throw error
+        } finally {
+          set({ isUpdating: false })
         }
       },
 
       updateItem: async (itemId: string, quantity: number) => {
+        // Optimistic update first
+        get().optimisticUpdateItem(itemId, quantity)
+        
+        set({ isUpdating: true, error: null })
         try {
-          set((state) => {
-            state.error = null
-          })
-
           await apiService.cart.updateItem(itemId, quantity)
-          
-          const response = await apiService.cart.get()
-          const backendCart = response.data.cart
-          const transformedCart: Cart = {
-            id: backendCart.id,
-            user_id: backendCart.user_id,
-            items: backendCart.cart_items || [],
-            total_items: response.data.item_count || 0,
-            total_amount: response.data.total || 0,
-            created_at: backendCart.created_at,
-            updated_at: backendCart.updated_at
-          }
-          
-          set((state) => {
-            state.cart = transformedCart
-          })
-        } catch (error) {
-          set((state) => {
-            state.error = 'Failed to update cart item'
-          })
+          await get().fetchCart()
+          get().clearOptimisticUpdates()
+        } catch (error: any) {
+          // Revert optimistic update on error
+          await get().fetchCart()
+          set({ error: error.response?.data?.error || 'Failed to update item' })
           throw error
+        } finally {
+          set({ isUpdating: false })
         }
       },
 
       removeItem: async (itemId: string) => {
+        // Optimistic update first
+        get().optimisticRemoveItem(itemId)
+        
+        set({ isUpdating: true, error: null })
         try {
-          set((state) => {
-            state.error = null
-          })
-
           await apiService.cart.removeItem(itemId)
-          
-          const response = await apiService.cart.get()
-          const backendCart = response.data.cart
-          const transformedCart: Cart = {
-            id: backendCart.id,
-            user_id: backendCart.user_id,
-            items: backendCart.cart_items || [],
-            total_items: response.data.item_count || 0,
-            total_amount: response.data.total || 0,
-            created_at: backendCart.created_at,
-            updated_at: backendCart.updated_at
-          }
-          
-          set((state) => {
-            state.cart = transformedCart
-          })
-        } catch (error) {
-          set((state) => {
-            state.error = 'Failed to remove item from cart'
-          })
+          await get().fetchCart()
+          get().clearOptimisticUpdates()
+        } catch (error: any) {
+          // Revert optimistic update on error
+          await get().fetchCart()
+          set({ error: error.response?.data?.error || 'Failed to remove item' })
           throw error
+        } finally {
+          set({ isUpdating: false })
         }
       },
 
       clearCart: async () => {
+        set({ isUpdating: true, error: null })
         try {
-          set((state) => {
-            state.error = null
-          })
-
           await apiService.cart.clear()
-          
-          set((state) => {
-            state.cart = null
-          })
-        } catch (error) {
-          set((state) => {
-            state.error = 'Failed to clear cart'
-          })
+          set({ cart: null })
+        } catch (error: any) {
+          set({ error: error.response?.data?.error || 'Failed to clear cart' })
           throw error
+        } finally {
+          set({ isUpdating: false })
         }
       },
 
-      clearError: () => {
+      // Optimistic updates
+      optimisticAddItem: (productId: string, quantity: number) => {
         set((state) => {
-          state.error = null
+          if (!state.cart) return
+          
+          const existingItem = state.cart.items.find(item => item.product_id === productId)
+          if (existingItem) {
+            existingItem.quantity += quantity
+          } else {
+            // We can't add a new item optimistically without product data
+            // So we'll just mark it for optimistic tracking
+            state.optimisticUpdates[productId] = {
+              quantity,
+              timestamp: Date.now()
+            }
+          }
+          
+          // Recalculate totals
+          state.cart.total_items = state.cart.items.reduce((sum, item) => sum + item.quantity, 0)
+          state.cart.total_amount = state.cart.items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0)
         })
       },
+
+      optimisticUpdateItem: (itemId: string, quantity: number) => {
+        set((state) => {
+          if (!state.cart) return
+          
+          const item = state.cart.items.find(item => item.id === itemId)
+          if (item) {
+            item.quantity = quantity
+            
+            // Recalculate totals
+            state.cart.total_items = state.cart.items.reduce((sum, item) => sum + item.quantity, 0)
+            state.cart.total_amount = state.cart.items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0)
+          }
+        })
+      },
+
+      optimisticRemoveItem: (itemId: string) => {
+        set((state) => {
+          if (!state.cart) return
+          
+          state.cart.items = state.cart.items.filter(item => item.id !== itemId)
+          
+          // Recalculate totals
+          state.cart.total_items = state.cart.items.reduce((sum, item) => sum + item.quantity, 0)
+          state.cart.total_amount = state.cart.items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0)
+        })
+      },
+
+      clearOptimisticUpdates: () => {
+        set({ optimisticUpdates: {} })
+      },
+
+      // Utility functions
+      getItemQuantity: (productId: string) => {
+        const cart = get().cart
+        if (!cart) return 0
+        
+        const item = cart.items.find(item => item.product_id === productId)
+        return item ? item.quantity : 0
+      },
+
+      getTotalItems: () => {
+        const cart = get().cart
+        return cart ? cart.total_items : 0
+      },
+
+      getTotalAmount: () => {
+        const cart = get().cart
+        return cart ? cart.total_amount : 0
+      },
+
+      isInCart: (productId: string) => {
+        const cart = get().cart
+        if (!cart) return false
+        
+        return cart.items.some(item => item.product_id === productId)
+      },
+
+      clearError: () => {
+        set({ error: null })
+      }
     })),
     {
-      name: 'cart-storage',
-      partialize: (state) => ({ cart: state.cart }),
+      name: 'cart-store',
+      partialize: (state) => ({
+        cart: state.cart
+      })
     }
   )
 ) 

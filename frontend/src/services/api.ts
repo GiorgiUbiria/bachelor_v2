@@ -70,6 +70,9 @@ export const apiService = {
     delete: (id: string) => api.delete(`/api/v1/products/${id}`),
     search: (params: any) => api.get('/api/v1/products/search', { params }),
     getRecommendations: (params?: any) => api.get('/api/v1/products/recommendations', { params }),
+    getSimilar: (productId: string) => api.get(`/api/v1/products/${productId}/similar`),
+    getSearchSuggestions: (query: string) => 
+      api.get('/api/v1/ml/search/suggestions', { params: { q: query, limit: 10 } }),
     getCategories: () => api.get('/api/v1/products/categories'),
   },
 

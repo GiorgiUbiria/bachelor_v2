@@ -1,9 +1,20 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router'
 import { 
-  ShoppingCart, Heart, Star, Share2, ArrowLeft, Package, 
-  Truck, Shield, RotateCcw, MessageCircle, 
-  Tag, Sparkles, TrendingUp, Zap, BarChart3, ThumbsUp
+  ArrowLeft, 
+  ShoppingCart, 
+  Heart, 
+  Star, 
+  Package, 
+  Truck, 
+  Shield, 
+  RotateCcw, 
+  Share2, 
+  Tag,
+  Sparkles,
+  TrendingUp,
+  Zap,
+  BarChart3
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'

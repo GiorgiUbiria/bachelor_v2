@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router'
-import { Search, Grid, List, ShoppingCart, Star, TrendingUp, Sparkles } from 'lucide-react'
+import { useSearchParams, Link } from 'react-router'
+import { 
+  Search, 
+  Grid, 
+  List, 
+  Star, 
+  ShoppingCart, 
+  TrendingUp, 
+  Sparkles
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'

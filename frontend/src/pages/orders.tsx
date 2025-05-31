@@ -1,30 +1,29 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { 
   Package, 
+  Search, 
+  Filter, 
   Calendar, 
   DollarSign, 
-  Filter, 
-  Search, 
-  Eye, 
-  X,
-  Truck,
-  CheckCircle,
-  Clock,
-  XCircle,
-  AlertCircle
+  Clock, 
+  Truck, 
+  CheckCircle, 
+  XCircle, 
+  AlertTriangle,
+  Eye,
+  X
 } from 'lucide-react'
 import { useOrdersStore } from '../store/orders'
 import { useAuthStore } from '../store/auth'
 import { useUIStore } from '../store/ui'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Separator } from '@/components/ui/separator'
 
 export default function OrdersPage() {
   const { orders, orderStats, isLoading, error, fetchOrders, fetchOrderStats, cancelOrder } = useOrdersStore()
@@ -34,7 +33,7 @@ export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [sortBy, setSortBy] = useState<string>('newest')
-  const [currentPage, setCurrentPage] = useState(1)
+  const [currentPage] = useState(1)
   const [itemsPerPage] = useState(10)
 
   useEffect(() => {
@@ -77,7 +76,7 @@ export default function OrdersPage() {
       case 'pending':
         return <Clock className="w-4 h-4 text-yellow-500" />
       case 'processing':
-        return <AlertCircle className="w-4 h-4 text-blue-500" />
+        return <AlertTriangle className="w-4 h-4 text-blue-500" />
       case 'shipped':
         return <Truck className="w-4 h-4 text-purple-500" />
       case 'delivered':

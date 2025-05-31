@@ -32,7 +32,7 @@ interface CommentsActions {
 type CommentsStore = CommentsState & CommentsActions
 
 export const useCommentsStore = create<CommentsStore>()(
-  immer((set, get) => ({
+  immer((set) => ({
     commentsByProduct: {},
     isLoading: false,
     error: null,

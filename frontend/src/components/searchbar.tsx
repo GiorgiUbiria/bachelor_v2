@@ -160,7 +160,7 @@ export function SearchBar({
     }
   }
 
-  return (
+    return (
     <div ref={searchRef} className={`relative ${className}`}>
       <div className="flex gap-2">
         {/* Main Search Input */}
@@ -387,5 +387,5 @@ export function SearchBar({
         </Card>
       )}
     </div>
-  )
+    )
 }

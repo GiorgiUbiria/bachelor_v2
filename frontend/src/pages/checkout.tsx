@@ -23,7 +23,6 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
 import { Discounts } from '../components/discounts'
 
 interface CheckoutStep {
@@ -60,8 +59,8 @@ const checkoutSteps: CheckoutStep[] = [
 
 export default function CheckoutPage() {
   const navigate = useNavigate()
-  const { cart, isLoading: cartLoading, fetchCart, clearCart } = useCartStore()
-  const { createOrder, isLoading: orderLoading } = useOrdersStore()
+  const { cart, fetchCart, clearCart } = useCartStore()
+  const { createOrder } = useOrdersStore()
   const { isAuthenticated } = useAuthStore()
   const { addToast } = useUIStore()
 
@@ -70,7 +69,6 @@ export default function CheckoutPage() {
   const [orderPlaced, setOrderPlaced] = useState(false)
   const [placedOrderId, setPlacedOrderId] = useState<string | null>(null)
   const [discountAmount, setDiscountAmount] = useState(0)
-  const [appliedDiscountCode, setAppliedDiscountCode] = useState<string | null>(null)
 
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     firstName: '',
@@ -129,7 +127,7 @@ export default function CheckoutPage() {
     return Math.max(0, subtotal + shipping + tax - discountAmount)
   }
 
-  const handleDiscountApplied = (discount: number, finalTotal: number) => {
+  const handleDiscountApplied = (discount: number) => {
     setDiscountAmount(discount)
     addToast({
       type: 'success',
@@ -628,7 +626,7 @@ export default function CheckoutPage() {
               ) : (
                 <Button 
                   onClick={handlePlaceOrder}
-                  disabled={isProcessing || orderLoading}
+                  disabled={isProcessing}
                   className="bg-green-600 hover:bg-green-700"
                 >
                   {isProcessing ? 'Processing...' : 'Place Order'}

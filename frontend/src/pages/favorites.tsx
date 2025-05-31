@@ -1,30 +1,25 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { 
   Heart, 
-  Grid3X3, 
-  List, 
+  ShoppingCart, 
   Search, 
   Filter, 
-  ShoppingCart,
-  Package,
-  Star,
-  X,
-  SortAsc,
-  SortDesc
+  Grid, 
+  List, 
+  Package
 } from 'lucide-react'
 import { useFavoritesStore } from '../store/favorites'
 import { useCartStore } from '../store/cart'
 import { useAuthStore } from '../store/auth'
 import { useUIStore } from '../store/ui'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Separator } from '@/components/ui/separator'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 export default function FavoritesPage() {
   const { favorites, isLoading, error, fetchFavorites, removeFavorite } = useFavoritesStore()
@@ -204,7 +199,7 @@ export default function FavoritesPage() {
             </span>
             {variant === 'grid' && (
               <div className="flex items-center gap-1">
-                <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                <Heart className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                 <span className="text-sm text-muted-foreground">4.5</span>
               </div>
             )}
@@ -230,7 +225,7 @@ export default function FavoritesPage() {
             variant="outline"
             onClick={() => handleRemoveFavorite(favorite.product.id)}
           >
-            <X className="w-4 h-4" />
+            <Heart className="w-4 h-4" />
           </Button>
         </div>
       </CardContent>
@@ -259,7 +254,7 @@ export default function FavoritesPage() {
               size="sm"
               onClick={() => setViewMode('grid')}
             >
-              <Grid3X3 className="w-4 h-4" />
+              <Grid className="w-4 h-4" />
             </Button>
             <Button
               variant={viewMode === 'list' ? 'default' : 'outline'}

@@ -2,14 +2,8 @@ import { useState, useEffect } from 'react'
 import { 
   Percent, 
   Plus, 
-  Calendar, 
   DollarSign, 
-  Users, 
-  Zap,
   Gift,
-  Clock,
-  Target,
-  TrendingUp,
   Sparkles,
   Copy,
   Check
@@ -82,11 +76,10 @@ export function Discounts({
     fetchSmartSuggestions,
     createDiscount,
     applyDiscount,
-    calculateDiscount,
     clearError 
   } = useDiscountsStore()
   
-  const { user, isAuthenticated } = useAuthStore()
+  const { user } = useAuthStore()
   const { addToast } = useUIStore()
 
   const [showCreateDialog, setShowCreateDialog] = useState(false)

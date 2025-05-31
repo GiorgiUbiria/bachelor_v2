@@ -1,49 +1,25 @@
 import { useState, useEffect } from 'react'
 import { 
-  Tag, 
   Plus, 
   X, 
   Search, 
-  Filter,
-  Sparkles,
   Hash,
-  Edit,
-  Trash2,
   Check
 } from 'lucide-react'
 import { useTagsStore, type Tag as TagType } from '../store/tags'
 import { useAuthStore } from '../store/auth'
 import { useUIStore } from '../store/ui'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Skeleton } from '@/components/ui/skeleton'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
 
 interface TagsManagerProps {
   productId?: string
@@ -53,53 +29,48 @@ interface TagsManagerProps {
   showCreateButton?: boolean
 }
 
-interface CreateTagFormData {
-  name: string
-  description: string
-  color: string
-}
+// interface CreateTagFormData {
+//   name: string
+//   description: string
+//   color: string
+// }
 
-const TAG_COLORS = [
-  '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16',
-  '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9',
-  '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef',
-  '#ec4899', '#f43f5e', '#64748b', '#6b7280', '#374151'
-]
+// const TAG_COLORS = [
+//   '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16',
+//   '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9',
+//   '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef',
+//   '#ec4899', '#f43f5e', '#64748b', '#6b7280', '#374151'
+// ]
 
 export function TagsManager({ 
   productId, 
   mode = 'admin', 
-  onTagSelect,
-  selectedTags = [],
-  showCreateButton = true 
 }: TagsManagerProps) {
   const { 
     tags, 
     productTags, 
-    isLoading, 
     error, 
-    isSubmitting,
     fetchTags, 
     fetchProductTags,
-    createTag, 
+    // createTag, 
     addTagToProduct,
     removeTagFromProduct,
     clearError 
   } = useTagsStore()
   
-  const { user, isAuthenticated } = useAuthStore()
+  const { user } = useAuthStore()
   const { addToast } = useUIStore()
 
-  const [showCreateDialog, setShowCreateDialog] = useState(false)
+  // const [_, setShowCreateDialog] = useState(false)
   const [showAddTagDialog, setShowAddTagDialog] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [filterColor, setFilterColor] = useState<string>('all')
+  const [filterColor] = useState<string>('all')
   
-  const [createFormData, setCreateFormData] = useState<CreateTagFormData>({
-    name: '',
-    description: '',
-    color: TAG_COLORS[0]
-  })
+  // const [createFormData, setCreateFormData] = useState<CreateTagFormData>({
+  //   name: '',
+  //   description: '',
+  //   color: TAG_COLORS[0]
+  // })
 
   const currentProductTags = productId ? productTags[productId] || [] : []
   const isAdmin = user?.email?.includes('ubiriagiorgi8') || user?.name?.toLowerCase().includes('admin')
@@ -121,33 +92,33 @@ export function TagsManager({
     }
   }, [error, addToast, clearError])
 
-  const handleCreateTag = async () => {
-    if (!createFormData.name.trim()) {
-      addToast({
-        type: 'error',
-        description: 'Please enter a tag name'
-      })
-      return
-    }
+  // const handleCreateTag = async () => {
+  //   if (!createFormData.name.trim()) {
+  //     addToast({
+  //       type: 'error',
+  //       description: 'Please enter a tag name'
+  //     })
+  //     return
+  //   }
 
-    try {
-      await createTag({
-        name: createFormData.name.trim(),
-        description: createFormData.description.trim() || undefined,
-        color: createFormData.color
-      })
+  //   try {
+  //     await createTag({
+  //       name: createFormData.name.trim(),
+  //       description: createFormData.description.trim() || undefined,
+  //       color: createFormData.color
+  //     })
 
-      setCreateFormData({ name: '', description: '', color: TAG_COLORS[0] })
-      setShowCreateDialog(false)
+  //     setCreateFormData({ name: '', description: '', color: TAG_COLORS[0] })
+  //     setShowCreateDialog(false)
       
-      addToast({
-        type: 'success',
-        description: 'Tag created successfully!'
-      })
-    } catch (error) {
-      // Error handled by store and useEffect
-    }
-  }
+  //     addToast({
+  //       type: 'success',
+  //       description: 'Tag created successfully!'
+  //     })
+  //   } catch (error) {
+  //     // Error handled by store and useEffect
+  //   }
+  // }
 
   const handleAddTagToProduct = async (tagId: string) => {
     if (!productId) return
@@ -180,11 +151,11 @@ export function TagsManager({
     }
   }
 
-  const handleTagSelect = (tagId: string) => {
-    if (onTagSelect) {
-      onTagSelect(tagId)
-    }
-  }
+  // const handleTagSelect = (tagId: string) => {
+  //   if (onTagSelect) {
+  //     onTagSelect(tagId)
+  //   }
+  // }
 
   // Filter tags based on search and color
   const filteredTags = tags.filter(tag => {
