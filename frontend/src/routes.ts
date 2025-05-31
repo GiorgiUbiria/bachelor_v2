@@ -9,6 +9,8 @@ import Admin from "./pages/admin";
 import Profile from "./pages/profile";
 import Orders from "./pages/orders";
 import OrderDetail from "./pages/order-detail";
+import Checkout from "./pages/checkout";
+import Favorites from "./pages/favorites";
 
 export const router = createBrowserRouter([
   {
@@ -40,6 +42,14 @@ export const router = createBrowserRouter([
           { index: true, Component: Orders },
           { path: ":id", Component: OrderDetail },
         ],
+      },
+      {
+        path: "checkout",
+        Component: Checkout,
+      },
+      {
+        path: "favorites",
+        Component: Favorites,
       },
       {
         path: "admin",
